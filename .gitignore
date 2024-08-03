@@ -1,0 +1,7 @@
+node_modules/
+MongoDb/
+NodeJs/
+Masterserver/gamedata/*
+Tools/Cache/gamedata/*
+package-lock.json
+*.bat

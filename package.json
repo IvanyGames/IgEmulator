@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "mongodb": "^4.11.0",
+    "node-xmpp-component": "^2.0.9",
+    "node-xmpp-client": "^3.2.0"
+  }
+}
