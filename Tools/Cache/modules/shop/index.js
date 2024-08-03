@@ -3,11 +3,8 @@ var fs = require("fs");
 
 var skipTestOffers = true;
 exports.module = function (callback) {
-
-	var usedStoreIds = [];
-
 	var resultData = [];
-	var dirData = fs.readdirSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.version + "/libs/config/Shop");
+	var dirData = fs.readdirSync("./modules/Shop/Shop");
 	for (var e = 0; e < dirData.length; e++) {
 		var dirElementName = dirData[e];
 
@@ -19,7 +16,7 @@ exports.module = function (callback) {
 
 		//Пропуск элементов о которых не удалось получить информацию, или которые являются директориями
 		try {
-			if (fs.statSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.version + "/libs/config/Shop/" + dirElementName).isDirectory() == true) {
+			if (fs.statSync("./modules/Shop/Shop/" + dirElementName).isDirectory() == true) {
 				console.log("[CacheShop]:Skip '" + dirElementName + "' this is directory!");
 				continue;
 			}
@@ -30,7 +27,7 @@ exports.module = function (callback) {
 
 		var fileData = null;
 		try {
-			fileData = fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.version + "/libs/config/Shop/" + dirElementName, "utf8");
+			fileData = fs.readFileSync("./modules/Shop/Shop/" + dirElementName, "utf8");
 		} catch (err) {
 			console.log("[CacheShop]:Skip '" + dirElementName + "' couldn't read!");
 			continue;
@@ -52,7 +49,7 @@ exports.module = function (callback) {
 		for (var i = 0; i < childrensOffer.length; i++) {
 			var childOfferAttrs = childrensOffer[i].attrs;
 
-			var itemId = Number(childOfferAttrs.store_id);
+			var itemsId = Number(childOfferAttrs.store_id);
 			var itemName = childOfferAttrs.item_name;
 
 			var itemGamePrice = Number(childOfferAttrs.game_money);
@@ -66,11 +63,6 @@ exports.module = function (callback) {
 			var itemKeyItemName = childOfferAttrs.key_item_name;
 			if (itemKeyItemName == null) {
 				itemKeyItemName = "";
-			}
-
-			var itemKeyItemPrice = Number(childOfferAttrs.key_item_money)
-			if (Number.isNaN(itemKeyItemPrice) == true) {
-				itemKeyItemPrice = 0;
 			}
 
 			var itemDurabilityPoints = Number(childOfferAttrs.durability_points)
@@ -112,12 +104,7 @@ exports.module = function (callback) {
 
 			var itemOfferStatus = childOfferAttrs.offer_status
 
-			var itemRefundable = Number(childOfferAttrs.refundable)
-			if (Number.isNaN(itemRefundable) == true) {
-				itemRefundable = 0;
-			}
-
-			var itemRank = Number(childOfferAttrs.rank)
+			var itemRank = Number(childOfferAttrs.rank);
 			if (Number.isNaN(itemRank) == true) {
 				itemRank = 0;
 			}
@@ -146,24 +133,21 @@ exports.module = function (callback) {
 				itemDiscount = 0;
 			}
 
-			if (usedStoreIds.indexOf(itemId) != -1) {
-				console.log("[CacheShop]:Duplicate store_id " + itemId);
-				throw "";
+			var itemSortingIndex = Number(childOfferAttrs.shop_sorting_index);
+			if (Number.isNaN(itemSortingIndex) == true) {
+				itemSortingIndex = 0;
 			}
 
-			usedStoreIds.push(itemId);
-
 			resultData.push({
-				"id": itemId,
+				"id": itemsId,
 				"name": itemName,
 				"game_price": itemGamePrice,
 				"cry_price": itemCryPrice,
 				"crown_price": itemCrownPrice,
 				"game_price_origin": itemGamePriceOrigin,
 				"cry_price_origin": itemCryPriceOrigin,
-				"crown_price_origin": itemCrownPriceOrigin,
+				"crown_price_origin": itemCrownPriceOrigin,				
 				"key_item_name": itemKeyItemName,
-				"key_item_price": itemKeyItemPrice,
 				"durabilityPoints": itemDurabilityPoints,
 				"repair_cost": itemRepairCost,
 				"quantity": itemQuantity,
@@ -171,9 +155,9 @@ exports.module = function (callback) {
 				"item_category_override": itemItemCategoryOverride,
 				"offer_status": itemOfferStatus,
 				"supplier_id": 1,
-				"refundable": itemRefundable,
 				"rank": itemRank,
-				"discount": itemDiscount
+				"discount": itemDiscount,
+				"sorting_index": itemSortingIndex,				
 			});
 		}
 

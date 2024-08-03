@@ -9,7 +9,7 @@ var persistent_settings_get = require('./modules/persistent_settings_get')
 var shop_get_offers = require('./modules/shop_get_offers')
 var get_configs = require('./modules/get_configs')
 var get_storage_items = require('./modules/get_storage_items')
-var player_status = require('./modules/player_status')
+//var player_status = require('./modules/player_status')
 var get_profile_performance = require('./modules/get_profile_performance')
 var get_achievements = require('./modules/get_achievements')
 var get_player_stats = require('./modules/get_player_stats')
@@ -19,8 +19,10 @@ var setcurrentclass = require('./modules/setcurrentclass')
 var setcharacter = require('./modules/setcharacter')
 var persistent_settings_set = require('./modules/persistent_settings_set')
 var shop_buy_offer = require('./modules/shop_buy_offer')
+
 var get_expired_items = require('./modules/get_expired_items')
 var delete_item = require('./modules/delete_item')
+
 var gameroom_open = require('./modules/gameroom_open')
 var gameroom_setplayer = require('./modules/gameroom_setplayer')
 var gameroom_leave = require('./modules/gameroom_leave')
@@ -32,60 +34,80 @@ var gameroom_promote_to_host = require('./modules/gameroom_promote_to_host')
 var gameroom_kick = require('./modules/gameroom_kick')
 var gameroom_update = require('./modules/gameroom_update')
 var gameroom_setprivatestatus = require('./modules/gameroom_setprivatestatus')
+var gameroom_set_observer = require('./modules/gameroom_set_observer')
+
 var voting_start = require('./modules/voting_start')
 var voting_vote = require('./modules/voting_vote')
+
 var quickplay_maplist = require('./modules/quickplay_maplist')
+
 var gameroom_askserver = require('./modules/gameroom_askserver')
+
 var session_join = require('./modules/session_join')
+
 var setserver = require('./modules/setserver')
+
 var getprofile = require('./modules/getprofile')
+
 var update_achievements = require('./modules/update_achievements')
+
 var send_invitation = require('./modules/send_invitation')
 var confirm_notification = require('./modules/confirm_notification')
+
 var remove_friend = require('./modules/remove_friend')
+
 var clan_create = require('./modules/clan_create')
 var set_clan_info = require('./modules/set_clan_info')
 var clan_set_member_role = require('./modules/clan_set_member_role')
 var clan_leave = require('./modules/clan_leave')
 var clan_list = require('./modules/clan_list')
 var clan_kick = require('./modules/clan_kick')
+
 var broadcast_sync = require('./modules/broadcast_sync')
+
 var lobbychat_getchannelid = require('./modules/lobbychat_getchannelid')
+
 var invitation_send = require('./modules/invitation_send')
 var invitation_accept = require('./modules/invitation_accept')
+
+var player_status = require('./modules/player_status')
+
 var gameroom_quickplay = require('./modules/gameroom_quickplay')
 var gameroom_quickplay_cancel = require('./modules/gameroom_quickplay_cancel')
-var gameroom_offer_response = require('./modules/gameroom_offer_response')
+
 var get_last_seen_date = require('./modules/get_last_seen_date')
+
 var set_banner = require('./modules/set_banner')
+
 var profile_info_get_status = require('./modules/profile_info_get_status')
+
 var admin_cmd = require('./modules/admin_cmd')
+
 var set_rewards_info = require('./modules/set_rewards_info')
+
 var channel_logout = require('./modules/channel_logout')
 var user_logout = require('./modules/user_logout')
+
 var telemetry_stream = require('./modules/telemetry_stream')
+
 var generic_telemetry = require('./modules/generic_telemetry')
+
 var resync_profile = require('./modules/resync_profile')
+
 var tutorial_status = require('./modules/tutorial_status')
-var tutorial_result = require('./modules/tutorial_result')
-var mission_load = require('./modules/mission_load')
+
 var consume_item = require('./modules/consume_item')
 var notify_expired_items = require('./modules/notify_expired_items')
 var extend_item = require('./modules/extend_item')
 var repair_item = require('./modules/repair_item')
 var repair_multiple_items = require('./modules/repair_multiple_items')
-var ui_user_choice = require('./modules/ui_user_choice')
+var class_presence = require('./modules/class_presence')
+var punish_mode = require('./modules/punish_mode')
+var abuse_report = require('./modules/abuse_report')
+var check_nickname = require('./modules/check_nickname')
+var send_anticheat_report = require('./modules/send_anticheat_report')
 
-var class_presence = require('./modules/class_presence');
-var send_anticheat_report = require('./modules/send_anticheat_report');
-var punish_mode = require('./modules/punish_mode');
-var online_variables_get = require('./modules/online_variables_get');
-var invitation_can_follow = require('./modules/invitation_can_follow');
-var add_friend = require('./modules/add_friend');
-var add_friend_response = require('./modules/add_friend_response');
-var clan_invite = require('./modules/clan_invite');
-var clan_invite_response = require('./modules/clan_invite_response');
-var gameroom_setcustomparams = require('./modules/gameroom_setcustomparams');
+var mission_load = require('./modules_result/mission_load')
 
 exports.module = function (stanza) {
 	//console.log("[Masterserver]:Stanza\n" + stanza + "\n");
@@ -101,21 +123,28 @@ exports.module = function (stanza) {
 										switch (stanza.children[0].attrs.xmlns) {
 											case "urn:cryonline:k01":
 												if (stanza.children[0].children[0] != null) {
+
+													if (!isUserLoggedIn(stanza.children[0].children[0].name, stanza.attrs.from)) {
+														global.xmppClient.responseError(stanza, { type: 'continue', code: "1008" });
+														return;
+													}
+
 													queryDecompress(stanza);
 													console.time(stanza.children[0].children[0].name);
 													//console.time("[QueryProfiler]["+stanza.children[0].children[0].name+"]["+stanza.attrs.id+"]");
 													//console.log(stanza.children[0].children[0].name);
 													switch (stanza.children[0].children[0].name) {
+
 														case "get_account_profiles"://1ms
 															get_account_profiles.module(stanza);
 															break;
-														case "items"://0.2ms
+														case "items"://0.2ms ?
 															items.module(stanza);
 															break;
 														case "create_profile"://TODO
 															create_profile.module(stanza);
 															break;
-														case "join_channel"://TODO
+														case "join_channel"://10ms
 															join_channel.module(stanza);
 															break;
 														case "switch_channel":
@@ -136,7 +165,7 @@ exports.module = function (stanza) {
 														case "player_status"://0.3ms
 															player_status.module(stanza);
 															break;
-														case "get_profile_performance"://1ms
+														case "get_profile_performance"://NONE
 															get_profile_performance.module(stanza);
 															break;
 														case "get_achievements"://0.2ms
@@ -166,12 +195,14 @@ exports.module = function (stanza) {
 														case "shop_buy_multiple_offer"://
 															shop_buy_offer.module(stanza);
 															break;
-														case "get_expired_items"://1ms
+
+														case "get_expired_items"://0.2-10ms
 															get_expired_items.module(stanza);
 															break;
 														case "delete_item"://0.1ms
 															delete_item.module(stanza);
 															break;
+
 														case "gameroom_open"://1ms
 															gameroom_open.module(stanza);
 															break;
@@ -208,30 +239,37 @@ exports.module = function (stanza) {
 														case "gameroom_setprivatestatus"://0.3ms
 															gameroom_setprivatestatus.module(stanza);
 															break;
+														case "gameroom_set_observer"://TODO выдать спектатора в комнате
+															gameroom_set_observer.module(stanza);
+															break;
+
 														case "voting_start"://TODO Мб проверку на статус убрать
 															voting_start.module(stanza);
 															break;
 														case "voting_vote"://TODO Мб проверку на статус убрать
 															voting_vote.module(stanza);
 															break;
+
 														case "quickplay_maplist"://0.2ms
 															quickplay_maplist.module(stanza);
 															break;
+
 														case "setserver"://0.2ms
 															setserver.module(stanza);
 															break;
 														case "gameroom_askserver"://0.2ms
-															gameroom_askserver.module(stanza);
+															gameroom_askserver.module(stanza, 50);
 															break;
 														case "session_join"://0.2ms
 															session_join.module(stanza);
 															break;
 														case "getprofile"://2ms
-															getprofile.module(stanza);//TODO Вычисление vip
+															getprofile.module(stanza);//TODO Вычисление vip, слот для онли пестов и т.д
 															break;
 														case "update_achievements"://2ms
 															update_achievements.module(stanza);
 															break;
+
 														case "send_invitation"://5ms
 															send_invitation.module(stanza);
 															break;
@@ -241,13 +279,14 @@ exports.module = function (stanza) {
 														case "remove_friend"://5ms
 															remove_friend.module(stanza);
 															break;
+
 														case "clan_create"://5ms
 															clan_create.module(stanza);
 															break;
 														case "set_clan_info"://5-10ms
 															set_clan_info.module(stanza);
 															break;
-														case "clan_set_member_role"://5-30ms
+														case "clan_set_member_role"://5-30ms TODO Э?
 															clan_set_member_role.module(stanza);
 															break;
 														case "clan_leave"://5-30ms
@@ -259,42 +298,49 @@ exports.module = function (stanza) {
 														case "clan_kick"://5-30ms
 															clan_kick.module(stanza);
 															break;
+
 														case "broadcast_sync"://0.2ms
 															broadcast_sync.module(stanza);
 															break;
+
 														case "lobbychat_getchannelid"://0.2ms
 															lobbychat_getchannelid.module(stanza);
 															break;
+
 														case "invitation_send"://2ms
 															invitation_send.module(stanza);
 															break;
 														case "invitation_accept"://0.3ms
 															invitation_accept.module(stanza);
 															break;
+
 														case "gameroom_quickplay"://TODO
 															gameroom_quickplay.module(stanza);
 															break;
 														case "gameroom_quickplay_cancel"://TODO
 															gameroom_quickplay_cancel.module(stanza);
 															break;
-														case "gameroom_offer_response"://TODO
-															gameroom_offer_response.module(stanza);
-															break;
+
 														case "get_last_seen_date"://1ms
 															get_last_seen_date.module(stanza);
 															break;
+
 														case "set_banner"://0.2ms
 															set_banner.module(stanza);
 															break;
+
 														case "profile_info_get_status"://1ms
 															profile_info_get_status.module(stanza);
 															break;
+
 														case "admin_cmd"://1ms
 															admin_cmd.module(stanza);
 															break;
+
 														case "set_rewards_info"://TODO за время, мб сделать более плавной выдачу клановых очков
 															set_rewards_info.module(stanza);
 															break;
+
 														case "channel_logout"://0.1ms
 															channel_logout.module(stanza, true);
 															break;
@@ -313,9 +359,6 @@ exports.module = function (stanza) {
 														case "tutorial_status"://0.1-5ms
 															tutorial_status.module(stanza);
 															break;
-														case "tutorial_result"://0.5ms
-															tutorial_result.module(stanza);
-															break;
 														case "consume_item"://0.2ms
 															consume_item.module(stanza);
 															break;
@@ -331,38 +374,20 @@ exports.module = function (stanza) {
 														case "repair_multiple_items"://0.2ms
 															repair_multiple_items.module(stanza);
 															break;
-														case "ui_user_choice"://0.2ms
-															ui_user_choice.module(stanza);
-															break;
 														case "class_presence"://0.2ms
 															class_presence.module(stanza);
-															break;
-														case "send_anticheat_report"://0.2ms
-															send_anticheat_report.module(stanza);
 															break;
 														case "punish_mode"://0.2ms
 															punish_mode.module(stanza);
 															break;
-														case "online_variables_get"://0.2ms
-															online_variables_get.module(stanza);
+														case "abuse_report"://TODO
+															abuse_report.module(stanza);
 															break;
-														case "invitation_can_follow"://0.2ms
-															invitation_can_follow.module(stanza);
+														case "check_nickname"://1ms
+															check_nickname.module(stanza);
 															break;
-														case "add_friend"://0.2ms
-															add_friend.module(stanza);
-															break;
-														case "add_friend_response"://0.2ms
-															add_friend_response.module(stanza);
-															break;
-														case "clan_invite"://0.2ms
-															clan_invite.module(stanza);
-															break;
-														case "clan_invite_response"://0.2ms
-															clan_invite_response.module(stanza);
-															break;
-														case "gameroom_setcustomparams"://0.2ms
-															gameroom_setcustomparams.module(stanza);
+														case "send_anticheat_report"://1ms
+															send_anticheat_report.module(stanza);
 															break;
 													}
 													console.timeEnd(stanza.children[0].children[0].name);
@@ -394,7 +419,7 @@ exports.module = function (stanza) {
 												if (stanza.children[0].children[0] != null) {
 													switch (stanza.children[0].children[0].name) {
 														case "mission_load"://0.2ms
-															setTimeout(mission_load.module, 5000, stanza);
+															setTimeout(mission_load.module, 1000, stanza);
 															break;
 													}
 												}
@@ -427,4 +452,29 @@ function queryDecompress(stanza) {
 		}
 	}
 	//console.timeEnd("queryDecompress");
+}
+
+var allowedUnloggedQueries = [
+	'join_channel',
+	'switch_channel',
+	'create_profile',
+	'get_account_profiles',
+	'items',
+	'shop_get_offers',
+	'get_configs',
+	'invitation_accept',
+	'check_nickname'
+	//channel_logout?
+]
+
+function isUserLoggedIn(queryName, online_id) {
+	//console.time("isUserLoggedIn");
+
+	var username = online_id.split("@")[0];
+
+	if (allowedUnloggedQueries.indexOf(queryName) == -1 && !global.users.jid[online_id] && username != "dedicated" && online_id != "k01." + global.config.masterserver.domain)
+		return false;
+
+	return true;
+	//console.timeEnd("isUserLoggedIn");
 }

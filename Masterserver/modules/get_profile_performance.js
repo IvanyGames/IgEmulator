@@ -13,11 +13,12 @@ exports.module = function (stanza) {
     var missionsObject = global.CacheQuickAccess.missionsPvE.uid;
 
     if (missionsObject != null) {
-        var my_id_string = String(profileObject._id);
-        var response = new ltxElement("get_profile_performance", { missions_hash: global.CacheQuickAccess.missionsPvE.hash });
 
-        var elementPveMissionsPerformance = response.c("pve_missions_performance");
-        response.c("pvp_modes_to_complete");
+        var my_id_string = String(profileObject._id);
+
+        var elementGetProfilePerformance = new ltxElement("get_profile_performance", { missions_hash: global.CacheQuickAccess.missionsPvE.hash });
+
+        var elementPveMissionsPerformance = elementGetProfilePerformance.c("pve_missions_performance");
 
         for (var keyMission in missionsObject) {
 
@@ -27,9 +28,7 @@ exports.module = function (stanza) {
                 v_success = profileObject.profile_performance[mission_id].success;
             }
 
-            var performance = new ltxElement('performance', { mission_id: mission_id, success: v_success });
-            response.children.push(performance);
-            elementPveMissionsPerformance.children.push(performance);
+            var performance = elementPveMissionsPerformance.c('performance', { mission_id: mission_id, success: v_success });
 
             for (var cur_stat = 0; cur_stat < 6; cur_stat++) {
                 var key1 = String(cur_stat);
@@ -70,7 +69,27 @@ exports.module = function (stanza) {
             }
         }
 
-        global.xmppClient.response(stanza, response);
+        var elementPvpModesToComplete = elementGetProfilePerformance.c("pvp_modes_to_complete");
+
+        if (global.resources.RewardsConfiguration.GameModeFirstWinOfDayBonus.enabled) {
+
+            var timeCurrent = Math.round(new Date().getTime() / 1000);
+
+            var profileFirstWinOfDayObject = profileObject.first_win_of_day;
+            
+            if (new Date((timeCurrent * 1000) + 10800000).toISOString().split("T")[0] != new Date((profileFirstWinOfDayObject.time * 1000) + 10800000).toISOString().split("T")[0]) {
+                profileFirstWinOfDayObject.time = timeCurrent;
+                profileFirstWinOfDayObject.modes = [];
+            }
+
+            for (var mode in global.resources.RewardsConfiguration.GameModeFirstWinOfDayBonus.modes) {
+                if (profileFirstWinOfDayObject.modes.indexOf(mode) == -1) {
+                    elementPvpModesToComplete.c("mode").t(mode);
+                }
+            }
+        }
+
+        global.xmppClient.response(stanza, elementGetProfilePerformance);
 
     } else {
         //console.log("[GetProfilePerformance]:Get Failed from "+stanza.attrs.from);	

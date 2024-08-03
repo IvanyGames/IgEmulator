@@ -1,6 +1,7 @@
 var ltxElement = require('ltx').Element
 
 var scriptClan = require('../scripts/clan.js')
+var scriptProfile = require('../scripts/profile.js')
 var gameroom_leave = require('./gameroom_leave.js')
 
 exports.module = function (stanza) {
@@ -39,8 +40,10 @@ exports.module = function (stanza) {
 
             if (roomObject) {
                 if (roomObject.room_type == 4) {
-                    global.xmppClient.request(stanza.attrs.from, new ltxElement("gameroom_on_kicked"));
                     gameroom_leave.module(stanza, false, true, 7);
+                    scriptProfile.giveNotifications(profileObject.username, [{ type: 8, params: { data: "@messagebox_you_are_kicked_clan" } }], function (nAddResult) {
+
+                    })
                 } else {
                     var playerObject = profileObject.room_player_object;
                     playerObject.clanName = "";
@@ -77,7 +80,7 @@ exports.module = function (stanza) {
             if (!resultUpdateNewMaster.lastErrorObject.updatedExisting) {
                 //console.log("[" + stanza.attrs.from + "][ClanLeave]:Failed to find clan member for nominate to new master, the clan will be deleted");
 
-                global.db.warface.clans.deleteOne({ name: resultInfo.clan_name }, function (errRemoveClan, resultRemoveClan) {
+                global.db.warface.clans.remove({ name: resultInfo.clan_name }, { justOne: true }, function (errRemoveClan, resultRemoveClan) {
 
                     if (errRemoveClan) {
                         //console.log("[" + stanza.attrs.from + "][ClanLeave]:Failed to execute db query 2");

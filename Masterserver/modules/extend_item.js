@@ -12,8 +12,16 @@ exports.module = function (stanza) {
 
     var item_id = Number(stanza.children[0].children[0].attrs.item_id);
     var offer_id = stanza.children[0].children[0].attrs.offer_id;
+    var hash = stanza.children[0].children[0].attrs.hash;
 
     var elementExtendItem = new ltxElement("extend_item", { game_money: profileObject.game_money, cry_money: profileObject.cry_money, crown_money: profileObject.crown_money, error_status: "0" });
+
+    if (hash != global.cache.shop.hash) {
+        //console.log("[" + stanza.attrs.from + "][ExtendItem]:Hash mismatch");
+        elementExtendItem.attrs.error_status = "9";
+        global.xmppClient.response(stanza, elementExtendItem);
+        return;
+    }
 
     var offerShopInfo = global.CacheQuickAccess.shopOffersObject.id[offer_id];
 
@@ -75,7 +83,6 @@ exports.module = function (stanza) {
     elementExtendItem.attrs.crown_money = profileObject.crown_money;
     elementExtendItem.attrs.expiration_time_utc = itemObject.expiration_time_utc;
     elementExtendItem.attrs.seconds_left = itemObject.seconds_left;
-    elementExtendItem.attrs.hours_left = Math.round(itemObject.seconds_left / 3600);
 
     global.xmppClient.response(stanza, elementExtendItem);
 }

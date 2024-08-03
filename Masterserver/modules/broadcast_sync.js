@@ -44,8 +44,10 @@ function handlerClanKick(clankickQuery) {
 
     if (roomObject) {
         if (roomObject.room_type == 4) {
-            global.xmppClient.request(profileObject.username + "@" + global.config.masterserver.domain + "/GameClient", new ltxElement("gameroom_on_kicked"));
-            gameroom_leave.module({ attrs: { from: profileObject.username + "@" + global.config.masterserver.domain + "/GameClient" } }, false, true, 7);
+            gameroom_leave.module({ attrs: { from: profileObject.jid } }, false, true, 7);
+            scriptProfile.giveNotifications(profileObject.username, [{ type: 8, params: { data: "@messagebox_you_are_kicked_clan" } }], function (nAddResult) {
+
+            })
         } else {
             var playerObject = profileObject.room_player_object;
             playerObject.clanName = "";

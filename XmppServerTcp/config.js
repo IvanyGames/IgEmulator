@@ -5,8 +5,8 @@ module.exports = {
 		"domain": "warface",
 		"tlsUse": false,
 		"tlsRequire": false,
-		"tlsKey": null,
-		"tlsCert": null,
+		"tlsPfx": null,
+		"protectUse": false,
 		"socketSpeedLimit": -1
 	},
 	{
@@ -15,8 +15,8 @@ module.exports = {
 		"domain": "warface",
 		"tlsUse": true,
 		"tlsRequire": true,
-		"tlsKey": "./cert.key",
-		"tlsCert": "./cert.crt",
+		"tlsPfx": "./cert.pfx",
+		"protectUse": false,
 		"socketSpeedLimit": -1
 	}
 	],
@@ -28,6 +28,9 @@ module.exports = {
 	],
 
 	"connectionsUnauthorizedTimeout": 30,
+	"connectionsInactivityCheckEnable": false,
+	"connectionsInactivityCheckInterval": 1,
+	"connectionsInactivityCheckTimeout": 300,
 
 	"pingEnable": true,
 	"pingInterval": 30,
@@ -35,18 +38,23 @@ module.exports = {
 
 	"authAllowAnyone": false,
 
-	"authByActiveTokenEnable": false,
+	"authByActiveTokenEnable": true,
 
 	"localAccounts": {
-		"masterserver": { "password": "W8o9YQ7ED5rtsowPlwuoAmJcCVjcqc8B", "allowBindCustomResource": true, "admin": true },
-		"dedicated": { "password": "iTDki2ww7XaqtmqYl3maju6rxWMrVrHR", "allowBindCustomResource": true, "admin": false }
+		"masterserver": { "password": "masterserver", "allowBindCustomResource": true, "admin": true, "authAllowedFromIps": ["127.0.0.1"] },
+		"dedicated": { "password": "dedicated", "allowBindCustomResource": true, "admin": false, "authAllowedFromIps": null },
+		"1": { "password": "1", "allowBindCustomResource": false, "admin": false, "authAllowedFromIps": null },
+		"2": { "password": "2", "allowBindCustomResource": false, "admin": false, "authAllowedFromIps": null }
 	},
 	"componentsInfo": {
-		"wfc.warface": "yrb8fFNeJMdCFkYV0qUi5jWclFedJVJp",
-		"conference.warface": "Me1YRtd5E7NXT8CKiY7jT5cwg7DgOu3x",
+		"wfc.warface": "Hso1y5OWkiunPjQF",
+		"conference.warface": "Bve6j7FVVcL38fwt"
 	},
 	"api": {
 		"host": "127.0.0.1",
-		"port": 8080
+		"port": 8080,
+		"allowedIps": [
+			"127.0.0.1"
+		]
 	}
 };

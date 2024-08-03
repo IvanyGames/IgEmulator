@@ -4,25 +4,25 @@ var scriptProfile = require('./profile.js')
 
 exports.init = function () {
 
+    exports.saveProfiles();
+    setInterval(function () {
+        exports.saveProfiles();
+    }, 60000)
+
     exports.sendMasterserverInfo();
     setInterval(function () {
         exports.sendMasterserverInfo();
     }, 30000)
-
-    exports.updateGameroomsBrowserCache();
-    setInterval(function () {
-        exports.updateGameroomsBrowserCache();
-    }, 1000)
 
     exports.syncGamerooms();
     setInterval(function () {
         exports.syncGamerooms();
     }, 1000)
 
-    exports.saveProfiles();
+    exports.updateGameroomsBrowserCache();
     setInterval(function () {
-        exports.saveProfiles();
-    }, 60000)
+        exports.updateGameroomsBrowserCache();
+    }, 1000)
 
     exports.checkRemoteGive();
     setInterval(function () {
@@ -93,6 +93,8 @@ exports.syncGamerooms = function () {
 
         if ((roomObject.room_type == 8 || roomObject.room_type == 16 || roomObject.room_type == 32)) {
 
+
+
             if (roomObject.auto_start.auto_start_timeout == 0 && roomObject.core.can_start == 1 && roomObject.session.status == 0 && currentTime - roomObject.session.end_time > roomObject.auto_start.post_session_timeout_sec) {
 
                 console.log("[Timers][UpdateGameroom]:Start intermission timer " + roomObject.auto_start.intermission_timeout_sec + " sec");
@@ -150,6 +152,9 @@ exports.syncGamerooms = function () {
             roomObject.clan_war.synchronized_revision = roomObject.clan_war.revision;
             roomObject.custom_params.synchronized_revision = roomObject.custom_params.revision;
             roomObject.kick_vote_params.synchronized_revision = roomObject.kick_vote_params.revision;
+            roomObject.regions.synchronized_revision = roomObject.regions.revision;
+            roomObject.voice_chat.synchronized_revision = roomObject.voice_chat.revision;
+            roomObject.ingame_chat.synchronized_revision = roomObject.ingame_chat.revision;
 
         }
 
@@ -164,7 +169,7 @@ exports.sendMasterserverInfo = function () {
         online++;
     }
 
-    global.xmppClient.request("k01." + global.config.masterserver.domain, new ltxElement("setmasterserver", { resource: global.startupParams.resource, server_id: global.startupParams.server_id, channel: global.startupParams.channel, rank_group: global.startupParams.rank_group, load: online / Number(global.startupParams.max_users), online: online, min_rank: global.startupParams.min_rank, max_rank: global.startupParams.max_rank, bootstrap: global.startupParams.bootstrap, version: global.startupParams.ver }));
+    global.xmppClient.request("k01." + global.config.masterserver.domain, new ltxElement("setmasterserver", { resource: global.startupParams.resource, server_id: global.startupParams.server_id, channel: global.startupParams.channel, rank_group: global.startupParams.rank_group, load: online / Number(global.startupParams.max_users), online: online, min_rank: global.startupParams.min_rank, max_rank: global.startupParams.max_rank, bootstrap: global.startupParams.bootstrap }));
 }
 
 exports.checkRemoteGive = function () {
@@ -218,7 +223,7 @@ exports.checkRemoteGive = function () {
                 //console.log("[Timers][CheckRemoteGive]:Profile '" + resultProfile._id + "' give items");
                 var notifiactionsArr = [];
                 scriptProfile.giveGameItem(profileObject, resultProfile.remote_give.items, false, null, notifiactionsArr);
-                scriptProfile.giveNotifications(profileObject.username, notifiactionsArr, true, function (nAddResult) {
+                scriptProfile.giveNotifications(profileObject.username, notifiactionsArr, function (nAddResult) {
 
                 });
             }
@@ -238,7 +243,7 @@ exports.checkRemoteGive = function () {
             return;
         }
 
-        global.db.warface.profiles.updateMany({ _id: { $in: profilesIdsAcceptedArr } }, { "$set": { "remote_give": { "items": [], "achievements": [] } } }, function (errUpdate, resultUpdate) {
+        global.db.warface.profiles.updateMany({ _id: { $in: profilesIdsAcceptedArr } }, { "$set": { remote_give: { "items": [], "achievements": [] } } }, function (errUpdate, resultUpdate) {
 
             if (errUpdate) {
                 //console.log("[Timers][CheckRemoteGive]::Failed to updating data to the database");

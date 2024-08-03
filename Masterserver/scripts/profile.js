@@ -12,7 +12,7 @@ exports.notificationsObject = {
 			return new ltxElement("achievement", { achievement_id: params.achievement_id, progress: params.progress, completion_time: params.completion_time });
 		},
 		getInfo: function () {
-			return { confirmation: false };
+			return { confirmation: false, seconds_to_expire: 86400 };
 		}
 	},
 	"8": {
@@ -23,18 +23,20 @@ exports.notificationsObject = {
 			return new ltxElement("message", { data: params.data });
 		},
 		getInfo: function () {
-			return { confirmation: false };
+			return { confirmation: false, seconds_to_expire: 86400 };
 		}
 	},
 	"16": {
 		validateParams: function (params) {
-			return (typeof params.username === "string" && typeof params.initiator === "string" && typeof params.clan_name === "string" && typeof params.clan_id === "string");
+			return (typeof params.username === "string" && typeof params.profile_id === "number" && params.profile_id > -1 && typeof params.name === "string" && typeof params.clan_name === "string" && typeof params.experience === "number" && params.experience > -1 && typeof params.badge === "number" && params.badge > -1 && typeof params.mark === "number" && params.mark > -1 && typeof params.stripe === "number" && params.stripe > -1);
 		},
 		parseParams: function (params) {
-			return new ltxElement("invitation", { clan_name: params.clan_name, clan_id: params.clan_id, initiator: params.initiator });
+			var result = new ltxElement("invitation");
+			result.c("initiator_info", { online_id: params.username + "@" + global.config.masterserver.domain + "/GameClient", profile_id: params.profile_id, is_online: 1, name: params.name, clan_name: params.clan_name, experience: params.experience, badge: params.badge, mark: params.mark, stripe: params.stripe });
+			return result;
 		},
 		getInfo: function () {
-			return { confirmation: true };
+			return { confirmation: true, seconds_to_expire: 86400 };
 		}
 	},
 	"32": {
@@ -45,18 +47,20 @@ exports.notificationsObject = {
 			return new ltxElement("invite_result", { profile_id: params.profile_id, jid: params.username + "@" + global.config.masterserver.domain + "/GameClient", nickname: params.nickname, status: params.status, location: params.location, experience: params.experience, result: params.result });
 		},
 		getInfo: function () {
-			return { confirmation: false };
+			return { confirmation: false, seconds_to_expire: 86400 };
 		}
 	},
 	"64": {
 		validateParams: function (params) {
-			return (typeof params.username === "string" && typeof params.initiator === "string");
+			return (typeof params.username === "string" && typeof params.profile_id === "number" && params.profile_id > -1 && typeof params.name === "string" && typeof params.clan_name === "string" && typeof params.experience === "number" && params.experience > -1 && typeof params.badge === "number" && params.badge > -1 && typeof params.mark === "number" && params.mark > -1 && typeof params.stripe === "number" && params.stripe > -1);
 		},
 		parseParams: function (params) {
-			return new ltxElement("invitation", { clan_name: "", clan_id: "", initiator: params.initiator });
+			var result = new ltxElement("invitation");
+			result.c("initiator_info", { online_id: params.username + "@" + global.config.masterserver.domain + "/GameClient", profile_id: params.profile_id, is_online: 1, name: params.name, clan_name: params.clan_name, experience: params.experience, badge: params.badge, mark: params.mark, stripe: params.stripe });
+			return result;
 		},
 		getInfo: function () {
-			return { confirmation: true };
+			return { confirmation: true, seconds_to_expire: 86400 };
 		}
 	},
 	"128": {
@@ -67,7 +71,7 @@ exports.notificationsObject = {
 			return new ltxElement("invite_result", { profile_id: params.profile_id, jid: params.username + "@" + global.config.masterserver.domain + "/GameClient", nickname: params.nickname, status: params.status, location: params.location, experience: params.experience, result: params.result });
 		},
 		getInfo: function () {
-			return { confirmation: false };
+			return { confirmation: false, seconds_to_expire: 86400 };
 		}
 	},
 	"256": {
@@ -78,18 +82,7 @@ exports.notificationsObject = {
 			return new ltxElement("give_item", { name: params.name, offer_type: params.offer_type, extended_time: params.extended_time, consumables_count: params.consumables_count });
 		},
 		getInfo: function () {
-			return { confirmation: true };
-		}
-	},
-	"512": {
-		validateParams: function (params) {
-			return 1;
-		},
-		parseParams: function (params) {
-			return new ltxElement("announcement", { id: params.id, message: params.message, server: params.server, channel: params.channel, frequency: params.frequency, repeat_time: params.repeat_time, place: params.place });
-		},
-		getInfo: function () {
-			return { confirmation: false };
+			return { confirmation: true, seconds_to_expire: 86400 };
 		}
 	},
 	"2048": {
@@ -100,7 +93,7 @@ exports.notificationsObject = {
 			return new ltxElement("give_money", { currency: params.currency, type: params.type, amount: params.amount });
 		},
 		getInfo: function () {
-			return { confirmation: true };
+			return { confirmation: true, seconds_to_expire: 86400 };
 		}
 	},
 	"8192": {
@@ -121,7 +114,34 @@ exports.notificationsObject = {
 			return elementRandomBox;
 		},
 		getInfo: function () {
-			return { confirmation: true };
+			return { confirmation: true, seconds_to_expire: 86400 };
+		}
+	},
+	"65536": {
+		validateParams: function (params) {
+
+			if (Number.isNaN(params.operation_status) || !Array.isArray(params.items)) {
+				return false;
+			}
+
+			for (var i = 0; i < params.items.length; i++) {
+				var itemInfo = params.items[i];
+				if (Number.isNaN(itemInfo.repair_status) || Number.isNaN(itemInfo.profile_item_id) || Number.isNaN(itemInfo.money_spent) || Number.isNaN(itemInfo.total_durability) || Number.isNaN(itemInfo.durability)) {
+					return false;
+				}
+			}
+
+			return true;
+		},
+		parseParams: function (params) {
+			var result = new ltxElement("RepairResult", { operation_status: params.operation_status });
+			for (var i = 0; i < params.items.length; i++) {
+				result.c("item", params.items[i]);
+			}
+			return result;
+		},
+		getInfo: function () {
+			return { confirmation: false, seconds_to_expire: 86400 };
 		}
 	},
 	"131072": {
@@ -132,7 +152,7 @@ exports.notificationsObject = {
 			return new ltxElement("new_rank_reached", { old_rank: params.old_rank, new_rank: params.new_rank });
 		},
 		getInfo: function () {
-			return { confirmation: false };
+			return { confirmation: false, seconds_to_expire: 86400 };
 		}
 	},
 	"262144": {
@@ -143,12 +163,25 @@ exports.notificationsObject = {
 			return new ltxElement("message", { data: params.data });
 		},
 		getInfo: function () {
-			return { confirmation: true };
+			return { confirmation: true, seconds_to_expire: 86400 };
+		}
+	},
+	"2097152": {
+		validateParams: function (params) {
+			return (typeof params.profile_item_id === "number" && params.profile_item_id > -1);
+		},
+		parseParams: function (params) {
+			return new ltxElement("item_deleted", { profile_item_id: params.profile_item_id });
+		},
+		getInfo: function () {
+			return { confirmation: false, seconds_to_expire: 86400 };
 		}
 	}
 }
 
-exports.giveNotifications = function (username, notifications, sync, callBack) {
+exports.giveNotifications = function (username, notifications, callBack) {
+
+	var currentTimeUtc = Math.round((new Date().getTime()) / 1000);
 
 	var notifsCountToAllocate = 0;
 	for (var i = 0; i < notifications.length; i++) {
@@ -171,6 +204,8 @@ exports.giveNotifications = function (username, notifications, sync, callBack) {
 		//login_bonus validation
 
 		var notificationInfoInObj = notificationObjectInfo.getInfo();
+
+		notificationInfo.expirationTime = currentTimeUtc + notificationInfoInObj.seconds_to_expire;
 
 		notificationInfo.id = notificationInfoInObj.confirmation;
 
@@ -203,13 +238,7 @@ exports.giveNotifications = function (username, notifications, sync, callBack) {
 
 	function endAllocate(idStartFrom) {
 
-		var arrElementAddFriendRequest = [];
-
-		var elementSyncNotifications;
-
-		if (sync) {
-			elementSyncNotifications = new ltxElement("sync_notifications");
-		}
+		var elementSyncNotifications = new ltxElement("sync_notifications");
 
 		var notificationsToPush = [];
 
@@ -224,45 +253,13 @@ exports.giveNotifications = function (username, notifications, sync, callBack) {
 				notificationInfo.id = 0;
 			}
 
-			if (sync) {
-				var elementNotif = new ltxElement("notif", { id: (notificationInfo.id ? notificationInfo.id : new Date().getTime()), type: notificationInfo.type, confirmation: (notificationInfo.id ? 1 : 0), from_jid: global.config.masterserver.username + "@" + global.config.masterserver.domain + "/" + global.startupParams.resource, message: "" });
-				var elementNotifBody = exports.notificationsObject[notificationInfo.type].parseParams(notificationInfo.params);
-				if (notificationInfo.login_bonus) {
-					elementNotifBody.c("consecutive_login_bonus", notificationInfo.login_bonus);
-				}
-				elementNotif.children.push(elementNotifBody);
-				elementSyncNotifications.children.push(elementNotif);
-
-				if (notificationInfo.type == 64) {
-					var elementAddFriendRequest = new ltxElement("add_friend_request");
-					elementAddFriendRequest.c("friend", { jid: notificationInfo.params.username + "@" + global.config.masterserver.domain + "/GameClient", "nickname": notificationInfo.params.initiator, "status": 2, "experience": 0, "location": "" });
-					arrElementAddFriendRequest.push([elementAddFriendRequest, notificationInfo.id]);
-				}
-
-				if (notificationInfo.type == 128) {
-					var elementAddFriendResult = new ltxElement("add_friend_result", { result: notificationInfo.params.result });
-					elementAddFriendResult.c("friend", { jid: notificationInfo.params.username + "@" + global.config.masterserver.domain + "/GameClient", "nickname": notificationInfo.params.nickname, "status": notificationInfo.params.status, "experience": notificationInfo.params.experience, "location": "" });
-					arrElementAddFriendRequest.push([elementAddFriendResult, notificationInfo.id]);
-				}
-
-				if (notificationInfo.type == 16) {
-					var elementClanInviteRequest = new ltxElement("clan_invite_request", { clan_name: notificationInfo.params.clan_name, nickname: notificationInfo.params.initiator });
-					arrElementAddFriendRequest.push([elementClanInviteRequest, notificationInfo.id]);
-				}
-
-				if (notificationInfo.type == 32) {
-					var elementClanInviteResult = new ltxElement("clan_invite_result", { result: notificationInfo.params.result, nickname: notificationInfo.params.nickname });
-					arrElementAddFriendRequest.push([elementClanInviteResult, notificationInfo.id]);
-				}
-				//new ltx.Element("clan_invite_result",{result:result,nickname:profile_db.nick})	
-				//return (typeof params.username === "string" && typeof params.initiator === "string" && typeof params.clan_name === "string" && typeof params.clan_id === "string");
-				/*
-					global.masterserver.response(stanza,new ltx.Element("clan_invite",{nickname:nickname}));
-					var req_id = global.masterserver.request(profile_db_target.userid+"@warface/GameClient",new ltx.Element("clan_invite_request",{clan_name:clan_db.name,nickname:profile_db.nick}));
-					global.clan_requests[req_id] = {clan_id:clan_db._id,sender:user_id,target:profile_db_target.userid};
-				*/
-				//return new ltxElement("invite_result", { profile_id: params.profile_id, jid: params.username + "@" + global.config.masterserver.domain + "/GameClient", nickname: params.nickname, status: params.status, location: params.location, experience: params.experience, result: params.result });
+			var elementNotif = new ltxElement("notif", { id: (notificationInfo.id ? notificationInfo.id : new Date().getTime()), type: notificationInfo.type, confirmation: (notificationInfo.id ? 1 : 0), from_jid: global.config.masterserver.username + "@" + global.config.masterserver.domain + "/" + global.startupParams.resource, message: "", seconds_left_to_expire: notificationInfo.expirationTime - currentTimeUtc });
+			var elementNotifBody = exports.notificationsObject[notificationInfo.type].parseParams(notificationInfo.params);
+			if (notificationInfo.login_bonus) {
+				elementNotifBody.c("consecutive_login_bonus", notificationInfo.login_bonus);
 			}
+			elementNotif.children.push(elementNotifBody);
+			elementSyncNotifications.children.push(elementNotif);
 		}
 
 		if (notificationsToPush.length) {
@@ -287,14 +284,7 @@ exports.giveNotifications = function (username, notifications, sync, callBack) {
 		}
 
 		function endPushToDb() {
-			if (sync) {
-
-				for (var i = 0; i < arrElementAddFriendRequest.length; i++) {
-					global.xmppClient.request(username + "@" + global.config.masterserver.domain + "/GameClient", arrElementAddFriendRequest[i][0], arrElementAddFriendRequest[i][1])
-				}
-
-				global.xmppClient.request(username + "@" + global.config.masterserver.domain + "/GameClient", elementSyncNotifications);
-			}
+			global.xmppClient.request(username + "@" + global.config.masterserver.domain + "/GameClient", elementSyncNotifications);
 			callBack(true);
 		}
 	}
@@ -303,29 +293,8 @@ exports.giveNotifications = function (username, notifications, sync, callBack) {
 function openRandomBox(profileObject, randomBoxInfo, offerId, resultLtxArr, notificationInfoArr) {
 	var itemsToGiveArr = [];
 	for (var g = 0; g < randomBoxInfo.randomInfo.length; g++) {
-
 		var groupInfo = randomBoxInfo.randomInfo[g];
-
 		var randomWeight = Math.floor(Math.random() * groupInfo.totalWeight);
-
-		for (var i = 0; i < groupInfo.items.length; i++) {
-
-			var itemInfo = groupInfo.items[i];
-
-			if (itemInfo.itemWinLimit) {
-
-				if (!profileObject.win_limits[itemInfo.name]) {
-					profileObject.win_limits[itemInfo.name] = 0;
-				}
-
-				profileObject.win_limits[itemInfo.name]++;
-
-				if (profileObject.win_limits[itemInfo.name] >= itemInfo.itemWinLimit) {
-					randomWeight = itemInfo.weight;
-				}
-			}
-		}
-
 		//console.log("[OpenRandomBox]:Random weight:" + randomWeight);
 		var currentWeight = 0;
 		for (var i = 0; i < groupInfo.items.length; i++) {
@@ -333,11 +302,6 @@ function openRandomBox(profileObject, randomBoxInfo, offerId, resultLtxArr, noti
 			currentWeight = currentWeight + itemInfo.weight;
 			//console.log("[OpenRandomBox]:Random CurrentWeight:" + currentWeight);
 			if (currentWeight >= randomWeight) {
-
-				if (itemInfo.itemWinLimit) {
-					delete profileObject.win_limits[itemInfo.name];
-				}
-
 				itemsToGiveArr.push({ name: itemInfo.name, durabilityPoints: itemInfo.durabilityPoints, expirationTime: itemInfo.expirationTime, quantity: itemInfo.quantity, offerId: offerId });
 				break;
 			}
@@ -361,7 +325,7 @@ exports.giveGameItem = function (profileObject, itemsToGiveArr, disableMachSpeci
 
 		var itemToGiveInfo = itemsToGiveArr[i];
 
-		var specialItemInfo = global.resources.items.data[global.resources.items.data.findIndex(function (x) { return x.isShopItem == true && x.name == itemToGiveInfo.name; })];
+		var specialItemInfo = global.cacheJsonQuickAccess.shopSpecialItems.name[itemToGiveInfo.name];
 		if (specialItemInfo && !disableMachSpecialItem) {
 			//console.log("[Profile][GiveGameItem][Item]:Give type is Special");
 			switch (specialItemInfo.itemType) {
@@ -389,22 +353,12 @@ exports.giveGameItem = function (profileObject, itemsToGiveArr, disableMachSpeci
 					openBundle(profileObject, specialItemInfo, itemToGiveInfo.offerId, resultLtxArr, notificationInfoArr);
 					break;
 				case "exp":
-
 					var oldExperience = profileObject.experience;
 					var newExperience = profileObject.experience + itemToGiveInfo.quantity;
-
 					var maxExp = scriptTools.getExpByLevel(2147483647);
-
-					if (oldExperience < maxExp) {
-						if (newExperience > maxExp) {
-							newExperience = maxExp;
-						}
-					} else {
-						newExperience = oldExperience;
+					if (newExperience > maxExp) {
+						newExperience = maxExp;
 					}
-
-
-
 					profileObject.experience = newExperience;
 
 					var addedExperience = newExperience - oldExperience;
@@ -437,6 +391,25 @@ exports.giveGameItem = function (profileObject, itemsToGiveArr, disableMachSpeci
 					if (resultLtxArr) {
 						resultLtxArr.push(new ltxElement("exp", { name: itemToGiveInfo.name, added: addedExperience, total: newExperience, offerId: itemToGiveInfo.offerId }));
 					}
+					break;
+				case "cry_money":
+					var oldCryMoney = profileObject.cry_money;
+					var newCryMoney = profileObject.cry_money + itemToGiveInfo.quantity;
+					if (newCryMoney > 2147483647) {
+						newCryMoney = 2147483647;
+					}
+					profileObject.cry_money = newCryMoney;
+
+					var addedGameMoney = newCryMoney - oldCryMoney;
+
+					if (resultLtxArr) {
+						resultLtxArr.push(new ltxElement("cry_money", { name: itemToGiveInfo.name, added: addedGameMoney, total: newCryMoney, offerId: itemToGiveInfo.offerId }));
+					}
+
+					if (notificationInfoArr) {
+						notificationInfoArr.push({ type: 2048, params: { currency: "cry_money", type: 0, amount: itemToGiveInfo.quantity } });
+					}
+
 					break;
 				case "game_money":
 					var oldGameMoney = profileObject.game_money;
@@ -536,6 +509,9 @@ exports.giveGameItem = function (profileObject, itemsToGiveArr, disableMachSpeci
 						}
 					}
 					break;
+				case "key":
+					exports.giveGameItem(profileObject, [itemToGiveInfo], true, resultLtxArr, notificationInfoArr);
+					break;
 				default:
 					console.log("[Profile][GiveGameItem][Item]:Сouldn't find a handler for '" + specialItemInfo.itemType + "' item type");
 			}
@@ -554,7 +530,7 @@ exports.giveGameItem = function (profileObject, itemsToGiveArr, disableMachSpeci
 				profileItemObject.expired_confirmed = 0;
 				profileItemObject.durability_points += itemToGiveInfo.durabilityPoints;
 			} else {
-				profileItemObject = { "id": profileObject.items[profileObject.items.length - 1].id + 1, "name": itemToGiveInfo.name, "attached_to": "0", "config": "dm=0;material=default", "slot": 0, "equipped": 0, "default": 0, "permanent": 1, "expired_confirmed": 0, "buy_time_utc": (itemToGiveInfo.buyTimeUtc ? itemToGiveInfo.buyTimeUtc : Math.round((new Date().getTime()) / 1000)), "total_durability_points": itemToGiveInfo.durabilityPoints, "durability_points": itemToGiveInfo.durabilityPoints };
+				profileItemObject = { "id": profileObject.items[profileObject.items.length - 1].id + 1, "name": itemToGiveInfo.name, "attached_to": "0", "config": "dm=0;material=default", "slot": 0, "equipped": 0, "default": 0, "permanent": 1, "expired_confirmed": 0, "buy_time_utc": Math.round((new Date().getTime()) / 1000), "total_durability_points": itemToGiveInfo.durabilityPoints, "durability_points": itemToGiveInfo.durabilityPoints };
 				profileObject.items.push(profileItemObject);
 			}
 
@@ -591,15 +567,6 @@ exports.giveGameItem = function (profileObject, itemsToGiveArr, disableMachSpeci
 
 			var itemBuyTimeUtc = Math.round((new Date().getTime()) / 1000);
 
-			var expirationTimeNumberFull = expirationTimeNumber;
-
-			if (itemToGiveInfo.buyTimeUtc) {
-				expirationTimeNumber -= (itemBuyTimeUtc - itemToGiveInfo.buyTimeUtc);
-				if (expirationTimeNumber < 0) {
-					expirationTimeNumber = 0;
-				}
-			}
-
 			if (profileItemIndex != -1) {
 
 				profileItemObject = profileObject.items[profileItemIndex];
@@ -610,22 +577,22 @@ exports.giveGameItem = function (profileObject, itemsToGiveArr, disableMachSpeci
 					profileItemObject.expiration_time_utc = itemBuyTimeUtc + expirationTimeNumber;
 				}
 				profileItemObject.seconds_left = profileItemObject.expiration_time_utc - itemBuyTimeUtc;
-				profileItemObject.expired_confirmed = (profileItemObject.seconds_left > 0 ? 0 : 1);
+				profileItemObject.expired_confirmed = 0;
 
 			} else {
-				profileItemObject = { "id": profileObject.items[profileObject.items.length - 1].id + 1, "name": itemToGiveInfo.name, "attached_to": "0", "config": "dm=0;material=default", "slot": 0, "equipped": 0, "default": 0, "permanent": 0, "expired_confirmed": (expirationTimeNumber > 0 ? 0 : 1), "buy_time_utc": (itemToGiveInfo.buyTimeUtc ? itemToGiveInfo.buyTimeUtc : itemBuyTimeUtc), "expiration_time_utc": itemBuyTimeUtc + expirationTimeNumber, "seconds_left": expirationTimeNumber };
+				profileItemObject = { "id": profileObject.items[profileObject.items.length - 1].id + 1, "name": itemToGiveInfo.name, "attached_to": "0", "config": "dm=0;material=default", "slot": 0, "equipped": 0, "default": 0, "permanent": 0, "expired_confirmed": 0, "buy_time_utc": itemBuyTimeUtc, "expiration_time_utc": itemBuyTimeUtc + expirationTimeNumber, "seconds_left": expirationTimeNumber };
 				profileObject.items.push(profileItemObject);
 			}
 
 			var elementProfileItem = new ltxElement("profile_item", { name: profileItemObject.name, profile_item_id: profileItemObject.id, offerId: itemToGiveInfo.offerId, added_expiration: itemToGiveInfo.expirationTime, added_quantity: 0, error_status: 0 });
-			elementProfileItem.c("item", { "id": profileItemObject.id, "name": profileItemObject.name, "attached_to": profileItemObject.attached_to, "config": profileItemObject.config, "slot": profileItemObject.slot, "equipped": profileItemObject.equipped, "default": profileItemObject.default, "permanent": profileItemObject.permanent, "expired_confirmed": profileItemObject.expired_confirmed, "buy_time_utc": profileItemObject.buy_time_utc, "expiration_time_utc": profileItemObject.expiration_time_utc, "seconds_left": profileItemObject.seconds_left, "hours_left": Math.round(profileItemObject.seconds_left / 3600) });
+			elementProfileItem.c("item", profileItemObject);
 
 			if (resultLtxArr) {
 				resultLtxArr.push(elementProfileItem);
 			}
 
 			if (notificationInfoArr) {
-				notificationInfoArr.push({ type: 256, params: { name: profileItemObject.name, offer_type: "Expiration", extended_time: Math.round(expirationTimeNumberFull / 3600) } });
+				notificationInfoArr.push({ type: 256, params: { name: profileItemObject.name, offer_type: "Expiration", extended_time: Math.round(expirationTimeNumber / 3600) } });
 			}
 
 		} else if (itemToGiveInfo.quantity != 0) {
@@ -640,7 +607,7 @@ exports.giveGameItem = function (profileObject, itemsToGiveArr, disableMachSpeci
 				profileItemObject.quantity += itemToGiveInfo.quantity;
 				profileItemObject.expired_confirmed = 0;
 			} else {
-				profileItemObject = { "id": profileObject.items[profileObject.items.length - 1].id + 1, "name": itemToGiveInfo.name, "attached_to": "0", "config": "dm=0;material=default", "slot": 0, "equipped": 0, "default": 0, "permanent": 0, "expired_confirmed": 0, "buy_time_utc": (itemToGiveInfo.buyTimeUtc ? itemToGiveInfo.buyTimeUtc : Math.round((new Date().getTime()) / 1000)), "quantity": itemToGiveInfo.quantity }
+				profileItemObject = { "id": profileObject.items[profileObject.items.length - 1].id + 1, "name": itemToGiveInfo.name, "attached_to": "0", "config": "dm=0;material=default", "slot": 0, "equipped": 0, "default": 0, "permanent": 0, "expired_confirmed": 0, "buy_time_utc": Math.round((new Date().getTime()) / 1000), "quantity": itemToGiveInfo.quantity }
 				profileObject.items.push(profileItemObject);
 			}
 
@@ -655,14 +622,10 @@ exports.giveGameItem = function (profileObject, itemsToGiveArr, disableMachSpeci
 				notificationInfoArr.push({ type: 256, params: { name: profileItemObject.name, offer_type: "Consumable", consumables_count: itemToGiveInfo.quantity } });
 			}
 
-			var elementGetExpiredItems = new ltxElement("get_expired_items");
-			elementGetExpiredItems.c("consumable_item", profileItemObject);
-			global.xmppClient.request(profileObject.username + "@" + global.config.masterserver.domain + "/GameClient", elementGetExpiredItems);
-
 		} else {
 			//console.log("[Profile][GiveGameItem][Item]:Give type is Unlimited");
 
-			profileItemObject = { "id": profileObject.items[profileObject.items.length - 1].id + 1, "name": itemToGiveInfo.name, "attached_to": "0", "config": "dm=0;material=default", "slot": 0, "equipped": 0, "default": 0, "permanent": 0, "expired_confirmed": 0, "buy_time_utc": (itemToGiveInfo.buyTimeUtc ? itemToGiveInfo.buyTimeUtc : Math.round((new Date().getTime()) / 1000)) }
+			profileItemObject = { "id": profileObject.items[profileObject.items.length - 1].id + 1, "name": itemToGiveInfo.name, "attached_to": "0", "config": "dm=0;material=default", "slot": 0, "equipped": 0, "default": 0, "permanent": 0, "expired_confirmed": 0, "buy_time_utc": Math.round((new Date().getTime()) / 1000) }
 			profileObject.items.push(profileItemObject);
 
 			var elementProfileItem = new ltxElement("profile_item", { name: profileItemObject.name, profile_item_id: profileItemObject.id, offerId: itemToGiveInfo.offerId, added_expiration: 0, added_quantity: 0, error_status: 0 });
@@ -733,7 +696,7 @@ exports.updateAchievementsAmmount = function (profileObject, achievementsArr, ca
 		var achievementInfoIndex = global.resources.achievementsArr.findIndex(function (x) { return x.id == achievementObject.id });
 
 		if (achievementInfoIndex == -1) {
-			//console.log("[Tools][updateAchievementsAmmount][" + profileObject._id + "]:Сouldn't find information about the achievement '" + achievementObject.id + "'");
+			console.log("[Tools][updateAchievementsAmmount][" + profileObject._id + "]:Сouldn't find information about the achievement '" + achievementObject.id + "'");
 			continue;
 		}
 
@@ -742,18 +705,18 @@ exports.updateAchievementsAmmount = function (profileObject, achievementsArr, ca
 		//Валидация параметров
 		if (achievementObject.command == "set") {
 			if (typeof achievementObject.amount != "number" || Number.isNaN(achievementObject.amount) || achievementObject.amount < 0) {
-				//console.log("[Tools][updateAchievementsAmmount][" + profileObject._id + "]:Incorrect amount for command '" + achievementObject.command + "'");
+				console.log("[Tools][updateAchievementsAmmount][" + profileObject._id + "]:Incorrect amount for command '" + achievementObject.command + "'");
 				continue;
 			}
 		} else if (achievementObject.command == "inc") {
 			if (typeof achievementObject.amount != "number" || Number.isNaN(achievementObject.amount) || achievementObject.amount < 1) {
-				//console.log("[Tools][updateAchievementsAmmount][" + profileObject._id + "]:Incorrect amount for command '" + achievementObject.command + "'");
+				console.log("[Tools][updateAchievementsAmmount][" + profileObject._id + "]:Incorrect amount for command '" + achievementObject.command + "'");
 				continue;
 			}
 		} else if (achievementObject.command == "give") {
 			//Тут проверять нечего
 		} else {
-			//console.log("[Tools][updateAchievementsAmmount][" + profileObject._id + "]:Unknown command '" + achievementObject.command + "'");
+			console.log("[Tools][updateAchievementsAmmount][" + profileObject._id + "]:Unknown command '" + achievementObject.command + "'");
 			continue;
 		}
 
@@ -804,7 +767,7 @@ exports.updateAchievementsAmmount = function (profileObject, achievementsArr, ca
 		return;
 	}
 
-	exports.giveNotifications(profileObject.username, notificationsInfoArr, true, function (nAddResult) {
+	exports.giveNotifications(profileObject.username, notificationsInfoArr, function (nAddResult) {
 
 		if (!nAddResult) {
 			//console.log("[Tools][updateAchievementsAmmount][" + profileObject._id + "]:Give failed");
@@ -838,25 +801,40 @@ exports.save = function (profileObject, callBack) {
 			"nick": profileObject.nick,
 			//"clan_name": profileObject.clan_name,
 			"head": profileObject.head,
+
 			"items": profileObject.items,
 			"expired_items": profileObject.expired_items,
+
 			"missions_unlocked": profileObject.missions_unlocked,
-			"tutorial_passed": profileObject.tutorial_passed,
+
 			"tutorials_passed": profileObject.tutorials_passed,
+
 			"classes_unlocked": profileObject.classes_unlocked,
+
 			"persistent_settings": profileObject.persistent_settings,
+
 			"achievements": profileObject.achievements,
 			"is_starting_achievements_issued": profileObject.is_starting_achievements_issued,
+
 			"stats": profileObject.stats,
+
 			"contracts": profileObject.contracts,
+
 			"profile_performance": profileObject.profile_performance,
+
 			"wpn_usage": profileObject.wpn_usage,
+
 			"login_bonus": profileObject.login_bonus,
-			"win_limits": profileObject.win_limits,
-			"pvp_rating_points": profileObject.pvp_rating_points
+
+			"first_win_of_day": profileObject.first_win_of_day
+
 			//"room_object": null,
 			//"room_player_object": null,
-			//"region_id": region_id
+
+			//"region_id": profileObject.region_id,
+
+			//"jid": stanza.attrs.from
+
 		}
 	}, { projection: { "_id": 1 } }, callBack);
 
@@ -881,7 +859,7 @@ exports.giveSpecialReward = function (profileObject, rewardName, loginBonusInfo)
 		}
 	}
 
-	exports.giveNotifications(profileObject.username, notifiactionsArr, true, function (nAddResult) {
+	exports.giveNotifications(profileObject.username, notifiactionsArr, function (nAddResult) {
 
 	});
 }
@@ -899,7 +877,7 @@ exports.unlockClass = function (profileObject, className) {
 
 	if (profileObject.classes_unlocked.indexOf(classIdToUnlock) == -1) {
 		profileObject.classes_unlocked.push(classIdToUnlock);
-		exports.giveNotifications(profileObject.username, [{ type: 8, params: { data: "@" + className.toUpperCase() + "_unlocked" } }], true, function (nAddResult) {
+		exports.giveNotifications(profileObject.username, [{ type: 8, params: { data: "@" + className.toUpperCase() + "_unlocked" } }], function (nAddResult) {
 
 		})
 	}
@@ -1001,6 +979,8 @@ exports.getExpiredItems = function (profileObject, expiresArr) {
 		}
 	}
 
+	var itemsIndexToRemove = [];
+
 	var currentTime = Math.round(new Date().getTime() / 1000);
 
 	for (var i = 0; i < profileObject.items.length; i++) {
@@ -1026,8 +1006,22 @@ exports.getExpiredItems = function (profileObject, expiresArr) {
 		} else if (itemObject.seconds_left != null) {
 
 			if (itemObject.expiration_time_utc <= currentTime) {
-				itemObject.seconds_left = 0;
-				addExpire();
+
+				var specialItemInfo = global.cacheJsonQuickAccess.shopSpecialItems.name[itemObject.name];
+
+				if (specialItemInfo) {
+					switch (specialItemInfo.itemType) {
+						case "key":
+							itemsIndexToRemove.push(i);
+							break;
+						default:
+							itemObject.seconds_left = 0;
+							addExpire();
+					}
+				} else {
+					itemObject.seconds_left = 0;
+					addExpire();
+				}
 			} else {
 				itemObject.seconds_left = itemObject.expiration_time_utc - currentTime;
 			}
@@ -1035,4 +1029,45 @@ exports.getExpiredItems = function (profileObject, expiresArr) {
 		}
 
 	}
+
+	if (itemsIndexToRemove.length) {
+
+		var newItemsArr = [];
+
+		for (var i = 0; i < profileObject.items.length; i++) {
+
+			if (itemsIndexToRemove.indexOf(i) != -1) {
+				global.xmppClient.request(profileObject.username + "@" + global.config.masterserver.domain + "/GameClient", new ltxElement("delete_item", { item_id: profileObject.items[i].id }));
+				continue;
+			}
+
+			newItemsArr.push(profileObject.items[i]);
+		}
+
+		profileObject.items = newItemsArr;
+	}
+}
+
+exports.kickFromGameroomReasons = {
+	Left: 0,
+	KickMaster: 1,
+	KickTimeout: 2,
+	KickVote: 3,
+	KickAdmin: 4,
+	KickOverflow: 5,
+	KickRankRestricted: 6,
+	KickClan: 7,
+	KickAntiCheat: 8,
+	KickVersionMismatch: 9,
+	KickItemNotAvalaible: 10,
+	KickRankedGameCouldnotStart: 11,
+	KickRankedSessionEnded: 12,
+	KickHighLatency: 13,
+	KickLostConnection: 14,
+	KickEACOther: 15,
+	KickEACAuthenticationFailed: 16,
+	KickEACBanned: 17,
+	KickEACViolation: 18,
+	KickRestrictedEquipment: 19,
+	KickInsufficientPlayers: 20
 }

@@ -48,7 +48,7 @@ exports.module = function (stanza) {
 
             var specialRewardName = global.resources.objectProfileProgressionConfig.tutorial_passed[passInfo.type];
             if (specialRewardName) {
-                scriptProfile.giveSpecialReward(profileObject, specialRewardName, null);
+                scriptProfile.giveSpecialReward(profileObject, specialRewardName);
             }
 
             var profileTutorialUnloked = 1 + (profileObject.experience >= 120 ? 2 : 0) + (profileObject.experience >= 2900 ? 4 : 0);

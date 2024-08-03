@@ -8,7 +8,7 @@ exports.module = function (stanza) {
 
 	var username = stanza.attrs.from.split("@")[0];
 
-	if (version && global.startupParams.ver && version != global.startupParams.ver) {
+	if (version != global.startupParams.ver) {
 		//console.log("["+stanza.attrs.from+"][GetAccountProfiles]:Version mismatch");
 		global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "1" });
 		return;

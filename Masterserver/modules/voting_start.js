@@ -10,11 +10,6 @@ exports.module = function (stanza) {
         return;
     }
 
-    if (global.startupParams.disable_voting_start == "1") {
-        global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '2' });
-        return;
-    }
-
     var roomObject = profileObject.room_object;
 
     if (!roomObject) {
@@ -106,7 +101,7 @@ exports.module = function (stanza) {
 
     global.xmppClient.response(stanza, new ltxElement('voting_start', { target: target }));
 
-    var elementOnVotingStarted = new ltxElement('on_voting_started', { initiator: votingObject.initiator, target: votingObject.target, yes_votes_required: votingObject.required_yes, no_votes_required: votingObject.required_no, votes_required: votingObject.required_yes });
+    var elementOnVotingStarted = new ltxElement('on_voting_started', { initiator: votingObject.initiator, target: votingObject.target, yes_votes_required: votingObject.required_yes, no_votes_required: votingObject.required_no });
     var elementOnVotingVote = new ltxElement('on_voting_vote', { yes: votingObject.current_yes, no: votingObject.current_no });
 
     for (var i = 0; i < roomObject.core.players.length; i++) {

@@ -8,9 +8,10 @@ exports.init = function (callBackInit) {
 
 	var cacheUpdateHandlers = [
 		{ name: "shop", "handler": cacheHandlerShop, hash: 0 },
-		{ name: "clan_list", "handler": cacheClanList, hash: 0, isAll: true },
+		{ name: "clan_list", "handler": cacheClanList, hash: 0 },
 		{ name: "missions_pve", "handler": cacheMissionsPvE, hash: 0 },
-		{ name: "performance", "handler": cachePerformance, hash: 0 }
+		{ name: "performance", "handler": cachePerformance, hash: 0 },
+		{ name: "dynamic_multipliers", "handler": cacheDynamicMultipliers, hash: 0 }
 	];
 
 	function updateCache() {
@@ -18,17 +19,10 @@ exports.init = function (callBackInit) {
 		function updateCacheRecursive(callbackEnd) {
 			if (i < cacheUpdateHandlers.length) {
 				var cacheInfo = cacheUpdateHandlers[i];
-
-				var dbCacheCollection = global.db.warface.cache;
-
-				if (cacheInfo.isAll) {
-					dbCacheCollection = global.db.warface.cache_all_all;
-				}
-
-				dbCacheCollection.findOne({ _id: cacheInfo.name }, { projection: { "hash": 1 } }, function (err, dbCache) {
+				global.db.warface.cache.findOne({ _id: cacheInfo.name }, { projection: { "hash": 1 } }, function (err, dbCache) {
 					if (dbCache != null) {
 						if (dbCache.hash != cacheInfo.hash) {
-							dbCacheCollection.findOne({ _id: cacheInfo.name }, { projection: { "_id": 0 } }, function (err1, dbCacheData) {
+							global.db.warface.cache.findOne({ _id: cacheInfo.name }, { projection: { "_id": 0 } }, function (err1, dbCacheData) {
 								if (dbCacheData != null && dbCacheData.data != null) {
 									global.cache[cacheInfo.name] = { hash: dbCacheData.hash, data: dbCacheData.data };
 									cacheInfo.hash = dbCacheData.hash;
@@ -89,6 +83,16 @@ exports.init = function (callBackInit) {
 	}
 
 	function cacheClanList(cacheData, callback) {
+		/*
+		var elementClanList = new ltx.Element("clan_list");
+
+		for (var i = 0; i < cacheData.data.length; i++) {
+			var clanInfo = cacheData.data[i];
+			elementClanList.c("clan_performance", { position: clanInfo.position }).c("clan", { name: clanInfo.name, master: clanInfo.master, clan_points: clanInfo.clan_points, members: clanInfo.members });
+		}
+
+		global.CacheQuickAccess.clanList = { ltxCached: elementClanList };
+		*/
 		callback();
 	}
 
@@ -127,6 +131,10 @@ exports.init = function (callBackInit) {
 			global.xmppClient.request(userJid, global.CacheQuickAccess.missionsPvE.ltxCached);
 		}
 
+		callback();
+	}
+
+	function cacheDynamicMultipliers(cacheData, callback) {
 		callback();
 	}
 

@@ -20,8 +20,7 @@ exports.module = function (stanza) {
 			convertedAttrs[keyAttr.split("*").join(".")] = attrsSetting[keyAttr];
 		}
 
-		elementPersistentSettingsGet.c(keySetting, convertedAttrs);
-		elementPersistentSettingsGet.c("setting").c(keySetting, convertedAttrs);
+		elementPersistentSettingsGet.c(keySetting, convertedAttrs)
 	}
 
 	global.xmppClient.response(stanza, elementPersistentSettingsGet);

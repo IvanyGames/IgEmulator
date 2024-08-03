@@ -14,7 +14,7 @@ exports.module = function (stanza) {
     switch (channel) {
         case "0":
             //console.log("[" + stanza.attrs.from + "][LobbychatGetchannelid]:Chat channel '" + channel + "' is globalchat, ok");
-            global.xmppClient.response(stanza, new ltxElement("chat", { "channel": channel, "channel_id": "global." + global.startupParams.resource, "service_id": "conference." + global.config.masterserver.domain }));
+            global.xmppClient.response(stanza, new ltxElement("lobbychat_getchannelid", { "channel": channel, "channel_id": "global." + global.startupParams.resource, "service_id": "conference." + global.config.masterserver.domain }));
             break;
         case "1":
 
@@ -25,7 +25,7 @@ exports.module = function (stanza) {
                 return;
             }
 
-            global.xmppClient.response(stanza, new ltxElement("chat", { "channel": channel, "channel_id": "room." + global.startupParams.resource + "." + roomObject.room_id, "service_id": "conference." + global.config.masterserver.domain }));
+            global.xmppClient.response(stanza, new ltxElement("lobbychat_getchannelid", { "channel": channel, "channel_id": "room." + global.startupParams.resource + "." + roomObject.room_id, "service_id": "conference." + global.config.masterserver.domain }));
             break;
         case "2":
 
@@ -38,7 +38,7 @@ exports.module = function (stanza) {
         
             var playerObject = profileObject.room_player_object;
 
-            global.xmppClient.response(stanza, new ltxElement("chat", { "channel": channel, "channel_id": "room." + global.startupParams.resource + "." + roomObject.room_id + "." + playerObject.team_id, "service_id": "conference." + global.config.masterserver.domain }));
+            global.xmppClient.response(stanza, new ltxElement("lobbychat_getchannelid", { "channel": channel, "channel_id": "room." + global.startupParams.resource + "." + roomObject.room_id + "." + playerObject.team_id, "service_id": "conference." + global.config.masterserver.domain }));
             break;
         case "3":
 
@@ -47,10 +47,10 @@ exports.module = function (stanza) {
                 return;
             }
 
-            global.xmppClient.response(stanza, new ltxElement("chat", { "channel": channel, "channel_id": "clan." + scriptTools.getHexStringFromString(profileObject.clan_name), "service_id": "conference." + global.config.masterserver.domain }));
+            global.xmppClient.response(stanza, new ltxElement("lobbychat_getchannelid", { "channel": channel, "channel_id": "clan." + scriptTools.getHexStringFromString(profileObject.clan_name), "service_id": "conference." + global.config.masterserver.domain }));
             break;
         default:
             //console.log("[" + stanza.attrs.from + "][LobbychatGetchannelid]:Chat channel '" + channel + "' in not found");
-            global.xmppClient.response(stanza, new ltxElement("chat", { "channel": channel, "channel_id": "undefined", "service_id": "conference." + global.config.masterserver.domain }));
+            global.xmppClient.response(stanza, new ltxElement("lobbychat_getchannelid", { "channel": channel, "channel_id": "undefined", "service_id": "conference." + global.config.masterserver.domain }));
     }
 }

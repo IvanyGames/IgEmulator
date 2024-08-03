@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "ltx": "^3.0.0",
+    "mongodb": "^4.4.1"
+  }
+}

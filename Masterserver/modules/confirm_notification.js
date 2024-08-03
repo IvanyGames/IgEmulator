@@ -97,7 +97,7 @@ exports.module = function (stanza) {
                 }
             } else {
                 //console.log("["+stanza.attrs.from+"][ConfirmNotification]:All notifications is processed");
-                global.xmppClient.response(stanza, new ltxElement(stanza.children[0].children[0].name));
+                global.xmppClient.response(stanza, new ltxElement("confirm_notification"));
             }
 
         }
@@ -142,8 +142,8 @@ function confirmAddClanInvitation(stanza, profileObject, notificationInfo, callb
         if (notificationInfo.confirmation.result == "0") {
 
             function inviteResults(resultTarget, resultMe) {
-                scriptProfile.giveNotifications(notificationParams.username, [{ type: 32, params: { username: resultProfile.username, profile_id: resultProfile._id, nickname: resultProfile.nick, status: profileObject.status, location: profileObject.location, experience: profileObject.experience, result: resultTarget } }], true, function (nAddResultTarget) {
-                    scriptProfile.giveNotifications(resultProfile.username, [{ type: 32, params: { username: notificationParams.username, profile_id: resultProfileTarget._id, nickname: resultProfileTarget.nick, status: resultProfileTarget.status, location: resultProfileTarget.location, experience: resultProfileTarget.experience, result: resultMe } }], true, function (nAddResult) {
+                scriptProfile.giveNotifications(notificationParams.username, [{ type: 32, params: { username: resultProfile.username, profile_id: resultProfile._id, nickname: resultProfile.nick, status: profileObject.status, location: profileObject.location, experience: profileObject.experience, result: resultTarget } }], function (nAddResultTarget) {
+                    scriptProfile.giveNotifications(resultProfile.username, [{ type: 32, params: { username: notificationParams.username, profile_id: resultProfileTarget._id, nickname: resultProfileTarget.nick, status: resultProfileTarget.status, location: resultProfileTarget.location, experience: resultProfileTarget.experience, result: resultMe } }], function (nAddResult) {
                         callback();
                     });
                 });
@@ -180,7 +180,7 @@ function confirmAddClanInvitation(stanza, profileObject, notificationInfo, callb
                         return;
                     }
 
-                    if (resultMembersCount > global.config.clan_members_limit && global.config.clan_members_limit != -1) {
+                    if (resultMembersCount > global.config.clan_members_limit) {
                         //console.log("[" + stanza.attrs.from + "][ConfirmNotification][AddClan]:Failed, clan is full");
                         inviteResults(11, 11);
                         return;
@@ -204,9 +204,9 @@ function confirmAddClanInvitation(stanza, profileObject, notificationInfo, callb
                         inviteResults(0, 0);
 
                         profileObject.clan_name = notificationParams.clan_name;
-
+                        
                         var roomObject = profileObject.room_object;
-
+                        
                         if (roomObject) {
                             var playerObject = profileObject.room_player_object;
                             playerObject.clanName = notificationParams.clan_name;
@@ -237,7 +237,7 @@ function confirmAddClanInvitation(stanza, profileObject, notificationInfo, callb
             });
 
         } else {
-            scriptProfile.giveNotifications(notificationParams.username, [{ type: 32, params: { username: resultProfile.username, profile_id: resultProfile._id, nickname: resultProfile.nick, status: profileObject.status, location: profileObject.location, experience: profileObject.experience, result: 1 } }], true, function (nAddResult) {
+            scriptProfile.giveNotifications(notificationParams.username, [{ type: 32, params: { username: resultProfile.username, profile_id: resultProfile._id, nickname: resultProfile.nick, status: profileObject.status, location: profileObject.location, experience: profileObject.experience, result: 1 } }], function (nAddResult) {
                 callback();
             });
         }
@@ -276,8 +276,8 @@ function confirmAddFriendInvitation(stanza, profileObject, notificationInfo, cal
         if (notificationInfo.confirmation.result == "0") {
 
             function inviteResults(resultTarget, resultMe) {
-                scriptProfile.giveNotifications(notificationParams.username, [{ type: 128, params: { username: resultProfile.username, profile_id: resultProfile._id, nickname: resultProfile.nick, status: profileObject.status, location: profileObject.location, experience: profileObject.experience, result: resultTarget } }], true, function (nAddResultTarget) {
-                    scriptProfile.giveNotifications(resultProfile.username, [{ type: 128, params: { username: notificationParams.username, profile_id: resultProfileTarget._id, nickname: resultProfileTarget.nick, status: resultProfileTarget.status, location: resultProfileTarget.location, experience: resultProfileTarget.experience, result: resultMe } }], true, function (nAddResult) {
+                scriptProfile.giveNotifications(notificationParams.username, [{ type: 128, params: { username: resultProfile.username, profile_id: resultProfile._id, nickname: resultProfile.nick, status: profileObject.status, location: profileObject.location, experience: profileObject.experience, result: resultTarget } }], function (nAddResultTarget) {
+                    scriptProfile.giveNotifications(resultProfile.username, [{ type: 128, params: { username: notificationParams.username, profile_id: resultProfileTarget._id, nickname: resultProfileTarget.nick, status: resultProfileTarget.status, location: resultProfileTarget.location, experience: resultProfileTarget.experience, result: resultMe } }], function (nAddResult) {
                         callback();
                     });
                 });
@@ -286,10 +286,10 @@ function confirmAddFriendInvitation(stanza, profileObject, notificationInfo, cal
             if (resultProfile.friends.indexOf(resultProfileTarget._id) != -1 || resultProfileTarget.friends.indexOf(resultProfile._id) != -1) {
                 //console.log("[" + stanza.attrs.from + "][ConfirmNotification][AddFriend]:Already in friends");
                 inviteResults(4, 4);
-            } else if (resultProfile.friends.length >= global.config.friends_limit && global.config.friends_limit != -1) {
+            } else if (resultProfile.friends.length >= global.config.friends_limit) {
                 //console.log("[" + stanza.attrs.from + "][ConfirmNotification][AddFriend]:Friend list is full");
                 inviteResults(12, 11);
-            } else if (resultProfileTarget.friends.length >= global.config.friends_limit && global.config.friends_limit != -1) {
+            } else if (resultProfileTarget.friends.length >= global.config.friends_limit) {
                 //console.log("[" + stanza.attrs.from + "][ConfirmNotification][AddFriend]:Friend list target is full");
                 inviteResults(11, 12);
             } else {
@@ -333,7 +333,7 @@ function confirmAddFriendInvitation(stanza, profileObject, notificationInfo, cal
             }
 
         } else {
-            scriptProfile.giveNotifications(notificationParams.username, [{ type: 128, params: { username: resultProfile.username, profile_id: resultProfile._id, nickname: resultProfile.nick, status: profileObject.status, location: profileObject.location, experience: profileObject.experience, result: 1 } }], true, function (nAddResult) {
+            scriptProfile.giveNotifications(notificationParams.username, [{ type: 128, params: { username: resultProfile.username, profile_id: resultProfile._id, nickname: resultProfile.nick, status: profileObject.status, location: profileObject.location, experience: profileObject.experience, result: 1 } }], function (nAddResult) {
                 callback();
             });
         }

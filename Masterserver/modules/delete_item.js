@@ -22,7 +22,7 @@ exports.module = function (stanza) {
 
     var itemObject = profileObject.items[itemIndex];
 
-    if (itemObject.default == 1 || itemObject.expired_confirmed != 1) {
+    if (itemObject.default == 1 || itemObject.seconds_left != 0 && itemObject.durability_points != 0) {
         //console.log("["+stanza.attrs.from+"][DeleteItem]:Item '"+item_id+"' is not support delete");
         global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "3" });
         return;
@@ -30,5 +30,5 @@ exports.module = function (stanza) {
 
     profileObject.items.splice(itemIndex, 1);
 
-    global.xmppClient.response(stanza, new ltxElement("delete_item", { item_id: profileObject.item_id }));
+    global.xmppClient.response(stanza, new ltxElement("delete_item", { item_id: itemObject.id }));
 }

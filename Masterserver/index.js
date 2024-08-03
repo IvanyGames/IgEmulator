@@ -1,3 +1,15 @@
+process.on("uncaughtException", function (err, origin) {
+	console.log("uncaughtException:\n" + err.stack);
+	require("fs").writeFileSync("./crashes/crash_exception_" + new Date().getTime() + ".txt", err.stack);
+	process.exit(1);
+})
+
+process.on('unhandledRejection', function (reason, promise) {
+	console.log("unhandledRejection:\n" + promise);
+	require("fs").writeFileSync("./crashes/crash_rejection_" + new Date().getTime() + ".txt", promise);
+	process.exit(1);
+})
+
 var mongoClient = require("mongodb").MongoClient;
 var xmppNodeClient = require('node-xmpp-client');
 var ltx = require("ltx");
@@ -6,9 +18,11 @@ var xmppCore = require("./core.js");
 
 global.config = require('./config.json')
 
+var scriptCacheJson = require('./scripts/cacheJson.js');
 var scriptResources = require('./scripts/resources.js');
-var scriptXmpp = require('./scripts/xmpp.js')
-var scriptCache = require('./scripts/cache.js');
+var scriptTools = require('./scripts/tools.js');
+var scriptXmppFunctions = require('./scripts/xmppFunctions.js')
+var scriptCacheDynamic = require('./scripts/cacheDynamic.js');
 var scriptTimers = require('./scripts/timers.js');
 
 global.startupParams = {};
@@ -27,7 +41,7 @@ function initGlobalVars() {
 	global.roomBrowserCacheToken = 1;
 	global.roomBrowserCacheArr = [];
 
-	global.arrRoomInvitations = [];
+	global.ticketsObject = {};
 
 	global.dedicatedServersObject = {};
 	global.sessionId = 1;
@@ -36,29 +50,21 @@ function initGlobalVars() {
 }
 initGlobalVars();
 
+scriptCacheJson.load();
 scriptResources.load();
 
 function loadDb() {
-
 	global.db = {};
-	console.log("[MongoDb]:Connecting");
-
-	var mongoConnectionAttrs = { useNewUrlParser: true, useUnifiedTopology: true };
-
-	if (require("mongodb/lib/connection_string.js").OPTIONS.reconnectTries) {
-		mongoConnectionAttrs.reconnectTries = Number.MAX_VALUE;
-	}
-
-	mongoClient.connect(config.mongodb, mongoConnectionAttrs, function (err, dbClient) {
+	console.log("[MongoDb]:Connecting...");
+	//reconnectTries: Number.MAX_VALUE
+	mongoClient.connect(config.mongodb, { useNewUrlParser: true, useUnifiedTopology: true }, function (err, dbClient) {
 		if (dbClient != null) {
-			console.log("[MongoDb]:Connected");
+			//console.log("[MongoDb]:Connected");
 			global.db.warface = {};
 			global.db.warface.accounts = dbClient.db("warface").collection("accounts");
 			global.db.warface.profiles = dbClient.db("warface").collection("profiles");
-			global.db.warface.cache = dbClient.db("warface").collection("cache_" + global.startupParams.locale + "_" + global.startupParams.ver);
-			global.db.warface.cache_all_all = dbClient.db("warface").collection("cache_all_all");
+			global.db.warface.cache = dbClient.db("warface").collection("cache");
 			global.db.warface.clans = dbClient.db("warface").collection("clans");
-			global.db.warface.hwban = dbClient.db("warface").collection("hwban");
 			initCache();
 		} else {
 			console.log("[MongoDb]:Connect error -> " + err.message);
@@ -71,10 +77,11 @@ function loadDb() {
 loadDb();
 
 function initCache() {
-	scriptCache.init(function () {
+	scriptCacheDynamic.init(function () {
 		loadXmppConnection(global.config.masterserver.host, global.config.masterserver.port, global.config.masterserver.domain, global.config.masterserver.username, global.config.masterserver.password, global.startupParams.resource);
 	});
 }
+
 
 function loadXmppConnection(xmppHost, xmppPort, xmppDomain, xmppUsername, xmppPassword, xmppResource) {
 
@@ -87,11 +94,11 @@ function loadXmppConnection(xmppHost, xmppPort, xmppDomain, xmppUsername, xmppPa
 		reconnect: true
 	}
 
-	console.log('[Masterserver]:Connecting')
+	console.log('[Masterserver]:Connecting...')
 
 	global.xmppClient = new xmppNodeClient(xmppOptions)
 
-	scriptXmpp.init(global.xmppClient);
+	scriptXmppFunctions.init(global.xmppClient);
 	scriptTimers.init();
 
 	global.xmppClient.on('stanza', function (stanza) {
@@ -119,14 +126,14 @@ function loadXmppConnection(xmppHost, xmppPort, xmppDomain, xmppUsername, xmppPa
 
 	global.xmppClient.on('disconnect', function (e) {
 		console.log("[Masterserver]:Disconnect")
-		initGlobalVars();
+		initGlobalVars();//Reinit
 	})
 
 	global.xmppClient.on('error', function (e) {
 		console.error(e)
 		process.exit(1)
 	})
-
+	
 	process.on('exit', function () {
 		global.xmppClient.end()
 	})

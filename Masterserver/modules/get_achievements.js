@@ -33,8 +33,17 @@ exports.module = function (stanza) {
 	if (profileObject.is_starting_achievements_issued != true) {
 		profileObject.is_starting_achievements_issued = true;
 		var newRank = scriptTools.getLevelByExp(profileObject.experience);
-		scriptProfile.updateAchievementsAmmount(profileObject, [{ id: 54, command: "set", amount: newRank }, { id: 55, command: "set", amount: newRank }, { id: 58, command: "set", amount: newRank }, { id: 93, command: "give" }, { id: 94, command: "give" }, { id: 95, command: "give" }, { id: 137, command: "give" }, { id: 138, command: "give" }], function (res) {
+		scriptProfile.updateAchievementsAmmount(profileObject, [{ id: 54, command: "set", amount: newRank }, { id: 55, command: "set", amount: newRank }, { id: 58, command: "set", amount: newRank }], function (res) {
 
 		});
 	}
 }
+/*
+	if (profileObject.is_starting_achievements_issued != true) {
+		profileObject.is_starting_achievements_issued = true;
+		var newRank = scriptTools.getLevelByExp(profileObject.experience);
+		scriptProfile.updateAchievementsAmmount(profileObject, [{ id: 54, command: "set", amount: newRank }, { id: 55, command: "set", amount: newRank }, { id: 58, command: "set", amount: newRank }, { id: 93, command: "give" }, { id: 94, command: "give" }, { id: 95, command: "give" }, { id: 137, command: "give" }, { id: 138, command: "give" }], function (res) {
+
+		});
+	}
+*/

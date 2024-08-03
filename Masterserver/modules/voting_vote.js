@@ -1,5 +1,6 @@
 var ltxElement = require('ltx').Element
 var gameroom_leave = require('./gameroom_leave.js')
+var scriptProfile = require('../scripts/profile.js')
 
 exports.module = function (stanza) {
 
@@ -89,8 +90,15 @@ exports.module = function (stanza) {
         var playerObjectTarget = roomObject.core.players[roomObject.core.players.findIndex(function (x) { return x.nickname == votingObject.target })];
 
         if (playerObjectTarget) {
-            roomObject.kicked.push(playerObjectTarget.online_id);
-            gameroom_leave.module({ attrs: { from: playerObjectTarget.online_id } }, false, true, 3);
+
+            var profileObjectTarget = global.users.jid[playerObjectTarget.online_id];
+
+            if (profileObjectTarget) {
+                roomObject.kicked.push(profileObjectTarget.jid);
+                gameroom_leave.module({ attrs: { from: profileObjectTarget.jid } }, false, true, 3);
+                scriptProfile.giveNotifications(profileObjectTarget.username, [{ type: 8, params: { data: "@messagebox_you_are_kicked_voting" } }], function (nAddResult) {
+                });
+            }
         }
     }
 }

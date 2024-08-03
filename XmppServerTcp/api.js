@@ -10,7 +10,6 @@ exports.create = function () {
 	var server = net.createServer(function (socket) {
 		//console.log("[HttpApi]["+socket.remoteAddress+":"+socket.remotePort+"][Connect]");
 		socket.on('data', function (data) {
-			//console.log(data);
 			//console.time("t");
 			//console.log("[HttpApi]["+socket.remoteAddress+":"+socket.remotePort+"][Data]");
 			//Отделение заголовка от post и других данных
@@ -92,7 +91,7 @@ function sendResponse(request, code, data) {
 			throw "[HttpApi]:Unsupported data type " + typeof data;//Если тип переменной data не совпадает не с одним из switch
 	}
 
-	request.socket.write("HTTP/1.1 " + code + " " + textCode + "\r\nConnection: close\r\nContent-Length: " + Buffer.byteLength(data, 'utf8') + "\r\n\r\n" + data);
+	request.socket.write("HTTP/1.1 " + code + " " + textCode + "\r\nConnection: close\r\nContent-Length: " + data.length + "\r\n\r\n" + data);
 }
 
 function onRequest(request) {
@@ -111,6 +110,9 @@ function onRequest(request) {
 					break;
 				case "/kick":
 					handlerKick(request);
+					break;
+				case "/mute":
+					handlerMute(request);
 					break;
 				default:
 					sendResponse(request, 404, "Not Found");
@@ -168,7 +170,7 @@ function handlerGetAccount(request) {
 
 function handlerGetOnline(request) {
 	var resultOnline = 0;
-	for (var connectionJid in global.connectionsOnline) {
+	for (connectionJid in global.connectionsOnline) {
 		var connection = global.connectionsOnline[connectionJid];
 		if (connection.listenerType == 0 && connection.isOnline == true && connectionJid.split("/")[1] == "GameClient") {
 			resultOnline++;
@@ -177,21 +179,75 @@ function handlerGetOnline(request) {
 	sendResponse(request, 200, { code: 0, online: resultOnline });
 }
 
+function handlerKick(request) {
+
+	var username = request.attrs.username;
+
+	var isFinded = false;
+
+	for (jid in global.connectionsOnline) {
+		var connection = global.connectionsOnline[jid];
+		if (connection.isOnline == true && connection.isAuthorized == true && connection.username == username) {
+			isFinded = true;
+			connection.sendEnd("");
+		}
+	}
+
+	if (!isFinded) {
+		sendResponse(request, 200, { code: 1 });
+		return;
+	}
+
+	sendResponse(request, 200, { code: 0 });
+}
+
+function handlerMute(request) {
+
+	var username = request.attrs.username;
+	var time = Number(request.attrs.time);
+
+	if (Number.isNaN(time)) {
+		sendResponse(request, 200, { code: 1 });
+		return;
+	}
+
+	var targetJid;
+
+	for (jid in global.connectionsOnline) {
+		var connection = global.connectionsOnline[jid];
+		if (connection.isOnline == true && connection.isAuthorized == true && connection.username == username) {
+			targetJid = connection.jid;
+			break;
+		}
+	}
+
+	if (!targetJid) {
+		sendResponse(request, 200, { code: 2 });
+		return;
+	}
+
+	var isConferenceFinded = false;
+
+	for (jid in global.connectionsOnline) {
+		var connection = global.connectionsOnline[jid];
+		if (connection.username == "conference.warface") {
+			connection.send("<mute from='warface' to='" + connection.jid + "' target='" + targetJid + "' time='" + time + "'/>");
+			isConferenceFinded = true;
+			break;
+		}
+	}
+
+	if (!isConferenceFinded) {
+		sendResponse(request, 200, { code: 3 });
+		return;
+	}	
+
+	sendResponse(request, 200, { code: 0 });
+}
+
 function timerTokenExpiration(id) {
 	if (global.clientTokens[id] != null) {
 		console.log("[ClientTokensSystem][" + id + "]:Token expired");
 		delete global.clientTokens[id];
 	}
-}
-
-function handlerKick(request) {
-
-	for (var jid in global.connectionsOnline) {
-		var connection = global.connectionsOnline[jid];
-		if (connection.isOnline == true && connection.isAuthorized == true && connection.username == request.attrs.username) {
-			connection.sendEnd("");
-		}
-	}
-
-	sendResponse(request, 200, { code: 0 });
 }

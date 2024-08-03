@@ -41,14 +41,12 @@ exports.init = function (xmpp_client) {
 		//console.log("[Response]:"+p_to_send+"\n");
 	}
 
-	xmpp_client.request = function (jid, request, newid) {
-		var elemntIq = new ltxElement("iq", { from: global.config.masterserver.username + "@" + global.config.masterserver.domain + "/" + global.startupParams.resource, to: jid, "xml:lang": "en", id: newid, type: "get" });
+	xmpp_client.request = function (jid, request) {
+		var elemntIq = new ltxElement("iq", { from: global.config.masterserver.username + "@" + global.config.masterserver.domain + "/" + global.startupParams.resource, to: jid, "xml:lang": "en", id: id, type: "get" });
 		var elemntQuery = elemntIq.c("query", { xmlns: "urn:cryonline:k01" });
 		elemntQuery.children.push(request);
 		xmpp_client.CompressedSend(elemntIq);
-		if (!newid) {
-			id++;
-		}
+		id++;
 		//console.log("[RequestTo]:"+p_to_send+"\n");
 		return elemntIq.attrs.id;
 	}

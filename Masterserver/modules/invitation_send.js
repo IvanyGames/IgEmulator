@@ -57,7 +57,7 @@ exports.module = function (stanza) {
             return;
         }
 
-        if (roomObject.mission.mode == "pve" && resultProfile.missions_unlocked.indexOf((roomObject.mission.type ? roomObject.mission.type : roomObject.mission.difficulty)) == -1) {
+        if (roomObject.mission.mode == "pve" && resultProfile.missions_unlocked.indexOf(roomObject.mission.type) == -1) {
             //console.log("[" + stanza.attrs.from + "][InvitationSend]:Target mission is locked");
             global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "12" });
             if (is_follow == "1") {
@@ -66,7 +66,7 @@ exports.module = function (stanza) {
             return;
         }
 
-        if (scriptTools.getLevelByExp(resultProfile.experience) < Number(global.startupParams.min_rank) || scriptTools.getLevelByExp(resultProfile.experience) > Number(global.startupParams.max_rank)) {
+        if (resultProfile.experience < scriptTools.getExpByLevel(Number(global.startupParams.min_rank)) || resultProfile.experience > scriptTools.getExpByLevel(Number(global.startupParams.max_rank))) {
             //console.log("[" + stanza.attrs.from + "][InvitationSend]:Target rank mismatch");
             global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "13" });
             if (is_follow == "1") {
@@ -156,7 +156,7 @@ exports.module = function (stanza) {
 
         var set_ticket = roomObject.room_id + "_" + profileObject._id + "_" + nickname;
 
-        if (global.arrRoomInvitations.findIndex(function (x) { return x.ticket == set_ticket; }) != -1) {
+        if (global.ticketsObject[set_ticket]) {
             //console.log("[" + stanza.attrs.from + "][InvitationSend]:Ticket already exists");
             global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '26' });
             if (is_follow == "1") {
@@ -165,37 +165,32 @@ exports.module = function (stanza) {
             return;
         }
 
+        global.ticketsObject[set_ticket] = { targetNick: nickname, targetUsername: resultProfile.username, isFollow: is_follow, senderJid: stanza.attrs.from, timerObject: setTimeout(expireTicket, 60000, set_ticket) };
+
         if (roomObject.invited.indexOf(resultProfile.username + "@" + global.config.masterserver.domain + "/GameClient") == -1) {
             roomObject.invited.push(resultProfile.username + "@" + global.config.masterserver.domain + "/GameClient");
         }
 
         global.xmppClient.response(stanza, new ltxElement("invitation_send", { nickname: nickname, is_follow: is_follow }));
 
-        var elementInvitationRequest = new ltxElement('invitation_request', { from: profileObject.nick, ticket: set_ticket, room_id: roomObject.room_id, ms_resource: global.startupParams.resource, is_follow: is_follow });
+        var elementInvitationRequest = new ltxElement('invitation_request', { from: profileObject.nick, ticket: set_ticket, room_id: roomObject.room_id, ms_resource: global.startupParams.resource, is_follow: is_follow, group_id: "" });
         elementInvitationRequest.c("initiator_info", { online_id: profileObject.username + "@" + global.config.masterserver.domain + "/GameClient", profile_id: profileObject._id, is_online: 1, name: profileObject.nick, clan_name: profileObject.clan_name, experience: profileObject.experience, badge: profileObject.banner_badge, mark: profileObject.banner_mark, stripe: profileObject.banner_stripe });
 
         if (is_follow == "0") {
             elementInvitationRequest.children.push(scriptGameroom.getClientLtx(roomObject, true));
         }
 
-        var request_id = global.xmppClient.request(resultProfile.username + "@" + global.config.masterserver.domain + "/GameClient", elementInvitationRequest);
+        global.xmppClient.request(resultProfile.username + "@" + global.config.masterserver.domain + "/GameClient", elementInvitationRequest);
 
-        global.arrRoomInvitations.push({ ticket: set_ticket, token: request_id, targetNick: nickname, targetUsername: resultProfile.username, isFollow: is_follow, senderJid: stanza.attrs.from, timerObject: setTimeout(expireTicket, 60000, set_ticket) });
     });
 }
 
 
 function expireTicket(ticket) {
-
-    var indexRoomInvitation = global.arrRoomInvitations.findIndex(function (x) { return x.ticket == ticket; });
-
-    if (indexRoomInvitation == -1) {
-        return;
+    var ticketObject = global.ticketsObject[ticket]
+    if (ticketObject) {
+        //console.log("[ExpireTicket][InvitationSend]:Ticket '"+ticket+"' is expire");
+        global.xmppClient.request(ticketObject.senderJid, new ltxElement("invitation_result", { result: 9, user: ticketObject.targetNick, is_follow: ticketObject.isFollow, user_id: ticketObject.targetUsername }));
+        delete global.ticketsObject[ticket];
     }
-
-    var objectRoomInvitation = global.arrRoomInvitations[indexRoomInvitation];
-
-    //console.log("[InvitationSend][ExpireTicket]:Ticket '" + ticket + "' is expire");
-    global.xmppClient.request(objectRoomInvitation.senderJid, new ltxElement("invitation_result", { result: 9, user: objectRoomInvitation.targetNick, is_follow: objectRoomInvitation.isFollow, user_id: objectRoomInvitation.targetUsername }));
-    global.arrRoomInvitations.splice(indexRoomInvitation, 1);
 }

@@ -43,6 +43,26 @@ exports.getFlagByNumericArray = function (arrayNumeric) {
 	return result;
 }
 
+exports.getInventorySlotNumberFromString = function (slotsText) {
+
+	if (!isNaN(slotsText)) {
+		return slotsText;
+	}
+
+	var slotsNamesArr = slotsText.split(" ").join("").split(",");
+	var sumSlots = 0;
+	for (var i = 0; i < slotsNamesArr.length; i++) {
+		var itemSlotName = slotsNamesArr[i].toLowerCase();
+		var itemSlotInfo = global.resources.defaultSlots[itemSlotName];
+		if (!itemSlotInfo) {
+			console.log("[Tools][convertTextInventorySlotToNumber]:SlotName '" + itemSlotName + "' in not found");
+			throw "";
+		}
+		sumSlots += Math.pow(2, itemSlotInfo.id);
+	}
+	return String(34359738367 - sumSlots);
+}
+
 exports.getEquipped = function (slotsValue) {
 
 	var equipped = 0;
@@ -125,12 +145,5 @@ exports.getItemEquippedFromSlotArr = function (slotArr) {
 }
 
 exports.getItemSlotFromSlotArr = function (slotArr) {
-
-	var result = 0;
-
-	for (var i = 0; i < slotArr.length; i++) {
-		result += Math.pow((1 << i), 5) * slotArr[i];
-	}
-
-	return result;
+	return (slotArr[0] & 0x3F | ((slotArr[1] & 0x3F | ((((slotArr[3] & 0x3F | ((slotArr[4] & 0x3F) << 6)) << 6) | slotArr[2] & 0x3F) << 6)) << 6) | 0x40000000);
 }

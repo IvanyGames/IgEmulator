@@ -1,7 +1,8 @@
-var Element = require('./element.js')
-var crypto = require('crypto')
-var socket = require('./socket')
-var xmppStanza = require('./stanza')
+const ltx = require('ltx')
+const crypto = require('crypto')
+const socket = require('./socket')
+const xmppStanza = require('./stanza')
+const listenerTypes = require('./listenerTypes')
 
 //Механизмы авторизации
 var mechanismsClient = {
@@ -14,42 +15,36 @@ function mechanismPlainAuth(connection, stanza) {
 		var authData = String(Buffer.from(b64Data, 'base64'));
 		var authDataArr = authData.split("\x00");
 		var authLogin = authDataArr[1];
-		//var authPassword = authDataArr[2];
-		
-		var authPassword;
-		var authVersion;
-
-		var authPasswordSplited = authDataArr[2].split("~");
-
-		if (authPasswordSplited.length == 2) {
-			authVersion = authPasswordSplited[0];
-			authPassword = authPasswordSplited[1];
-		} else {
-			authPassword = authDataArr[2];
-		}
-
-		console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:AuthInfo login:" + authLogin + " password:" + authPassword);
+		var authPassword = authDataArr[2];
+		console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:AuthInfo login:" + authLogin + " password:" + authPassword);
 		if (authLogin != null && authPassword != null) {
 			var accountData = null;
 			var isUseToken = false;
 			var isUseActiveToken = false;
 
 			var userOnlineConnection;
-			if (global.config.authByActiveTokenEnable == true) {
-				userOnlineConnection = global.connectionsOnline[authLogin + "@" + connection.host + "/GameClient"];
+			if (global.config.authByActiveTokenEnable == true && authPassword.indexOf("{:T:}") != -1) {
+				userOnlineConnection = global.connectionsOnline[authPassword.split("{:T:}")[0] + "@" + connection.host + "/GameClient"];
 			}
 			//Поиск активного токена
-			if (userOnlineConnection != null && userOnlineConnection.isOnline == true && userOnlineConnection.byActiveToken == false && authLogin + "#" + userOnlineConnection.active_token == authPassword) {
-				accountData = { password: authLogin + "#" + userOnlineConnection.active_token, allowBindCustomResource: false, admin: false, error: null };
+			if (userOnlineConnection != null && userOnlineConnection.isOnline == true && userOnlineConnection.byActiveToken == false && userOnlineConnection.username + "{:T:}" + userOnlineConnection.active_token == authPassword) {
+				accountData = { password: userOnlineConnection.username + "{:T:}" + userOnlineConnection.active_token, allowBindCustomResource: false, admin: false, error: null };
 				isUseActiveToken = true;
-				console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:Auth by ActiveToken");
+				console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:Auth by ActiveToken");
 			} else if (accountData == null && global.config.localAccounts[authLogin] != null) {//Поиск в статичных аккаунтах
+
 				accountData = global.config.localAccounts[authLogin];
-				console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:Auth by LocalAccount");
+
+				if (accountData && accountData.authAllowedFromIps && accountData.authAllowedFromIps.indexOf(connection.ip) == -1) {
+					accountData = null;
+					console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Auth by LocalAccount failed, ip '" + connection.ip + "' is not allowed");
+				} else {
+					console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:Auth by LocalAccount");
+				}
 			} else if (global.clientTokens[authLogin] != null) {//Поиск во временных токенах
 				accountData = global.clientTokens[authLogin];
 				isUseToken = true;
-				console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:Auth by Token");
+				console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:Auth by Token");
 			}
 
 			//Разрешение авторизации под любым логином или паролем.Использовать только для отладки!!!
@@ -58,14 +53,13 @@ function mechanismPlainAuth(connection, stanza) {
 			}
 
 			if (accountData != null) {
-				console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:AuthInfoAccount login:" + authLogin + " password:" + accountData.password);
+				console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:AuthInfoAccount login:" + authLogin + " password:" + accountData.password);
 			}
-
-			if (accountData != null && (accountData.password == authPassword || accountData.password + "{:B:}trunk" == authPassword)) {
+			//Проверка наличия аккаунта и совпадения пароля
+			if (accountData != null && accountData.password == authPassword) {
 				if (accountData.error == null) {
 					connection.username = authLogin;
 					connection.password = authPassword;
-					connection.version = authVersion;
 					if (accountData.allowBindCustomResource == true) {
 						connection.isAllowBindCustomResource = true;
 					}
@@ -86,7 +80,7 @@ function mechanismPlainAuth(connection, stanza) {
 					}
 					connection.send("<success xmlns='urn:ietf:params:xml:ns:xmpp-sasl'/>");
 				} else {
-					console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Account banned");
+					console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Account banned");
 					connection.sendEnd("<failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'><warface-failure>&lt;error&gt;&lt;code&gt;" + accountData.error.code + "&lt;/code&gt;&lt;message&gt;" + accountData.error.message + "&lt;/message&gt;&lt;unbantime&gt;" + accountData.error.unbantime + "&lt;/unbantime&gt;&lt;/error&gt;</warface-failure></failure>");
 				}
 
@@ -96,26 +90,26 @@ function mechanismPlainAuth(connection, stanza) {
 					delete global.clientTokens[authLogin];
 				}
 			} else {
-				console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Incorrect account or password");
+				console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Incorrect account or password");
 				connection.sendEnd("<failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'><not-authorized/></failure>");
 			}
 
 		} else {
-			console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Incorrect auth base64 data");
+			console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Incorrect auth base64 data");
 			connection.sendEnd("<failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'><incorrect-encoding/></failure>");
 		}
 	} else {
-		console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:No base64 data");
+		console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:No base64 data");
 		connection.sendEnd("<stream:error><xml-not-well-formed xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>");
 	}
 }
 
-exports.create = function (listenerId, listenerHost, listenerPort, listenerDomain, listenerTlsUse, listenerTlsRequire, listenerTlsKey, listenerTlsCert, listenerSocketSpeedLimit) {
+exports.create = function (listenerId, listenerHost, listenerPort, listenerDomain, listenerTlsUse, listenerTlsRequire, listenerTlsPfx, listenerSocketSpeedLimit, listenerProtectUse) {
 	var listenerType = 0;
 	var listenerQueryId = 1;
 	var NoResourceId = 1;
 
-	socket.create(listenerDomain, listenerTlsUse, listenerTlsKey, listenerTlsCert, listenerType, listenerId, listenerSocketSpeedLimit, function (server) {
+	socket.create(listenerDomain, listenerTlsUse, listenerTlsPfx, listenerType, listenerId, listenerSocketSpeedLimit, listenerProtectUse, function (server) {
 
 		//Установка параметра starttls если tls включено
 		var sTlsText = "";
@@ -126,7 +120,7 @@ exports.create = function (listenerId, listenerHost, listenerPort, listenerDomai
 		//Создание списака потдерживаемых механизмов
 		var sMechanismsText = "";
 
-		for (var key in mechanismsClient) {
+		for (key in mechanismsClient) {
 			sMechanismsText += "<mechanism>" + key + "</mechanism>"
 		}
 
@@ -145,10 +139,10 @@ exports.create = function (listenerId, listenerHost, listenerPort, listenerDomai
 			connection.isThreeStreamStarted = false;
 			connection.isBinded = false;
 
-			console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:Connect");
+			console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:Connect");
 
 			connection.on('streamStart', function (attrs) {
-				//console.log("["+connection.listenerType+"]["+connection.listenerId+"][" + connection.ip +":"+ connection.port+"]["+connection.jid+"][Info]:StreamStart");
+				//console.log("["+listenerTypes[connection.listenerType]+"]["+connection.listenerId+"][" + connection.ip +":"+ connection.port+"]["+connection.jid+"][Info]:StreamStart");
 				if (attrs["xmlns:stream"] == "http://etherx.jabber.org/streams") {
 					if (attrs.to == listenerDomain) {
 						if (connection.isPlainStreamStarted == false) {
@@ -164,21 +158,21 @@ exports.create = function (listenerId, listenerHost, listenerPort, listenerDomai
 							connection.send("<?xml version='1.0'?><stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' id='" + listenerQueryId + "' from='" + listenerDomain + "' version='1.0' xml:lang='en'><stream:features><bind xmlns='urn:ietf:params:xml:ns:xmpp-bind'/><session xmlns='urn:ietf:params:xml:ns:xmpp-session'/></stream:features>");
 							listenerQueryId++;
 						} else {
-							console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Unknown streamstart state");
+							console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Unknown streamstart state");
 							connection.sendEnd("<stream:error><xml-not-well-formed xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>");
 						}
 					} else {
-						console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Host '" + attrs.to + "' is unknown");
+						console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Host unknown");
 						connection.sendEnd("<stream:error><host-unknown xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>");
 					}
 				} else {
-					console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Invalid namespace");
+					console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Invalid namespace");
 					connection.sendEnd("<stream:error><invalid-namespace xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>");
 				}
 			});
 
 			connection.on('stanza', function (stanza) {
-				//console.log("["+connection.listenerType+"]["+connection.listenerId+"][" + connection.ip +":"+ connection.port+"]["+connection.jid+"][Info]:Stanza");
+				//console.log("["+listenerTypes[connection.listenerType]+"]["+connection.listenerId+"][" + connection.ip +":"+ connection.port+"]["+connection.jid+"][Info]:Stanza");
 				//console.log(String(stanza)+"\n");
 				if (connection.isPlainStreamStarted == true) {
 					if (listenerTlsUse == false || listenerTlsRequire == false || connection.isTlsStarted == true || stanza.name == "starttls") {
@@ -191,13 +185,13 @@ exports.create = function (listenerId, listenerHost, listenerPort, listenerDomai
 
 							if (global.connectionsOnline[connection.jid] != null) {
 								var remoteConnection = global.connectionsOnline[connection.jid];
-								console.log("[" + remoteConnection.listenerType + "][" + remoteConnection.listenerId + "][" + remoteConnection.ip + ":" + remoteConnection.port + "][" + remoteConnection.jid + "][Error]:Conflict");
+								console.log("[" + listenerTypes[remoteConnection.listenerType] + "][" + remoteConnection.listenerId + "][" + remoteConnection.ip + ":" + remoteConnection.port + "][" + remoteConnection.jid + "][Error]:Conflict");
 								global.connectionsOnline[connection.jid].sendEnd("<stream:error><conflict xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>");
 							}
 
 							global.connectionsOnline[connection.jid] = connection;
 
-							var cIqSession = new Element("iq", { type: "result", to: connection.jid, id: stanza.attrs.id, xmlns: "jabber:client" });
+							var cIqSession = new ltx.Element("iq", { type: "result", to: connection.jid, id: stanza.attrs.id, xmlns: "jabber:client" });
 							cIqSession.c("session", { xmlns: "urn:ietf:params:xml:ns:xmpp-session" });
 							connection.send(String(cIqSession));
 
@@ -212,12 +206,13 @@ exports.create = function (listenerId, listenerHost, listenerPort, listenerDomai
 									resourceToSet = cResource.getText();
 								}
 								//Если ресурс null или пустота, то генерируем уникальный ресурс.
-								if (resourceToSet == null || resourceToSet == "" || (connection.username == "dedicated" && resourceToSet == "GameClient")) {
+								if (resourceToSet == null || resourceToSet == "") {
 									resourceToSet = String(NoResourceId);
 									NoResourceId++;
 								}
 							} else if (connection.byActiveToken == true) {
-								resourceToSet = "dedicated";
+								resourceToSet = String(NoResourceId) + "-local";
+								NoResourceId++;
 							} else {
 								resourceToSet = "GameClient";
 							}
@@ -226,7 +221,7 @@ exports.create = function (listenerId, listenerHost, listenerPort, listenerDomai
 
 							connection.isBinded = true;
 
-							var cIqBind = new Element("iq", { id: stanza.attrs.id, type: "result" });
+							var cIqBind = new ltx.Element("iq", { id: stanza.attrs.id, type: "result" });
 							cIqBind.c("bind", { xmlns: "urn:ietf:params:xml:ns:xmpp-bind" }).c("jid").t(connection.jid);
 							connection.send(String(cIqBind));
 
@@ -236,7 +231,7 @@ exports.create = function (listenerId, listenerHost, listenerPort, listenerDomai
 							if (stanza.attrs.mechanism != null && mechanismsClient[stanza.attrs.mechanism] != null) {
 								mechanismsClient[stanza.attrs.mechanism](connection, stanza);
 							} else {
-								console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Invalid sasl mechanism");
+								console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Invalid sasl mechanism");
 								connection.sendEnd("<failure xmlns='urn:ietf:params:xml:ns:xmpp-sasl'><invalid-mechanism/></failure>");
 							}
 						} else if (stanza.name == "starttls") {
@@ -246,26 +241,26 @@ exports.create = function (listenerId, listenerHost, listenerPort, listenerDomai
 									connection.isTlsStarted = true;
 								});
 							} else {
-								console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Tls already started or disabled");
+								console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Tls already started or disabled");
 								connection.sendEnd("<failure xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>");
 							}
 						} else {
-							console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Invalid stanza state");
+							console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Invalid stanza state");
 							connection.sendEnd("<stream:error><xml-not-well-formed xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>");
 						}
 					} else {
-						console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Require tls");
+						console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Require tls");
 						connection.sendEnd("<stream:error><policy-violation xmlns='urn:ietf:params:xml:ns:xmpp-streams'/><text xml:lang='en' xmlns='urn:ietf:params:xml:ns:xmpp-streams'>Use of STARTTLS required</text></stream:error>");
 					}
 
 				} else {
-					console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Plain stream is not started");
+					console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Plain stream is not started");
 					connection.sendEnd("<stream:error><xml-not-well-formed xmlns='urn:ietf:params:xml:ns:xmpp-streams'/></stream:error>");
 				}
 			});
 
 			connection.on('disconnect', function () {
-				console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:Disconnect");
+				console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Info]:Disconnect");
 				if (global.connectionsOnline[connection.jid] != null && global.connectionsOnline[connection.jid].ip == connection.ip && global.connectionsOnline[connection.jid].port == connection.port) {
 					delete global.connectionsOnline[connection.jid];
 					//Так-же закрываем второе соединение, если оно есть.
@@ -277,11 +272,6 @@ exports.create = function (listenerId, listenerHost, listenerPort, listenerDomai
 					//Если пользователь отключается то отправлять инфу в k01 если он есть
 					if (connection.isOnline == true && connection.username != "masterserver") {
 						for (var i = 0; i < global.masterserversArr.length; i++) {
-							
-							if (connection.version && connection.version != global.masterserversArr[i].info.version) {
-								continue;
-							}
-
 							var masterserverJid = global.masterserversArr[i].jid;
 							var masterserverConnection = global.connectionsOnline[masterserverJid];
 
@@ -295,12 +285,12 @@ exports.create = function (listenerId, listenerHost, listenerPort, listenerDomai
 		});
 
 		server.on('error', function (err) {
-			console.log("[Listener][" + listenerType + "][" + listenerId + "]:Error");
+			console.log("[Listener][" + listenerTypes[listenerType] + "][" + listenerId + "]:Error");
 			throw err;
 		});
 
 		server.listen(listenerPort, listenerHost, function () {
-			console.log("[Listener][" + listenerType + "][" + listenerId + "][" + listenerHost + ":" + listenerPort + "]:Listen");
+			console.log("[Listener][" + listenerTypes[listenerType] + "][" + listenerId + "]:Listen");
 		});
 	});
 }

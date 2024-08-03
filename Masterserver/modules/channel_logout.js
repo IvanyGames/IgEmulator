@@ -17,7 +17,7 @@ exports.module = function (stanza, isNeedResponse, callBack) {
         }
         return;
     }
-
+    
     gameroom_leave.module(stanza, false, false, (isNeedResponse ? 0 : 14));
 
     delete global.users.jid[stanza.attrs.from];

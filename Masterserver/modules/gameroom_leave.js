@@ -65,7 +65,6 @@ exports.module = function (stanza, isNeedResponse, isNeedRequest, nReason) {
     }
 
     if (roomObject.core.players.length == 0) {
-
         global.gamerooms.splice(global.gamerooms.findIndex(function (x) { return x.room_id == roomObject.room_id }), 1);
 
         if (roomObject.dedicatedServerJid) {
@@ -86,7 +85,7 @@ exports.module = function (stanza, isNeedResponse, isNeedRequest, nReason) {
 
         roomObject.room_master.master = playerObjectNewMaster.profile_id;
 
-        if (roomObject.session.status == 0 && playerObjectNewMaster.status == 1) {
+        if ((roomObject.room_type == 1 || roomObject.room_type == 2 || roomObject.room_type == 4) && roomObject.session.status == 0 && playerObjectNewMaster.status == 1) {
             playerObjectNewMaster.status = 0;
         }
 

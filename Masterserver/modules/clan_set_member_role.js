@@ -13,23 +13,16 @@ exports.module = function (stanza) {
         return;
     }
 
-    var nickname = stanza.children[0].children[0].attrs.nickname;
     var profile_id = Number(stanza.children[0].children[0].attrs.profile_id);
     var role = Number(stanza.children[0].children[0].attrs.role);
 
-    if (Number.isNaN(role) || role < 1 || role > 3) {
+    if (Number.isNaN(profile_id) || Number.isNaN(role) || role < 1 || role > 3) {
         //console.log("[" + stanza.attrs.from + "][ClanSetMemberRole]:Bad attrs");
         global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '1' });
         return;
     }
 
-    var queryProfiles = { nick: nickname };
-
-    if (!Number.isNaN(profile_id)) {
-        queryProfiles = { _id: profile_id };
-    }
-
-    global.db.warface.profiles.find({ $or: [{ username: profileObject.username }, queryProfiles] }, { projection: { "username": 1, "nick": 1, "clan_name": 1, "clan_role": 1 } }).limit(2).toArray(function (errProfiles, resultProfiles) {
+    global.db.warface.profiles.find({ $or: [{ username: profileObject.username }, { _id: profile_id }] }, { projection: { "username": 1, "nick": 1, "clan_name": 1, "clan_role": 1 } }).limit(2).toArray(function (errProfiles, resultProfiles) {
 
         if (errProfiles) {
             //console.log("[" + stanza.attrs.from + "][ClanSetMemberRole]:Failed to getting data from the database");
@@ -45,7 +38,7 @@ exports.module = function (stanza) {
         }
         var myProfile = resultProfiles[myProfileIndex];
 
-        var targetProfileIndex = resultProfiles.findIndex(x => (x.nick == nickname || x._id == profile_id));
+        var targetProfileIndex = resultProfiles.findIndex(x => x._id == profile_id);
         if (targetProfileIndex == -1) {
             //console.log("[" + stanza.attrs.from + "][ClanSetMemberRole]:Profile target not found");
             global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '4' });
@@ -106,7 +99,7 @@ exports.module = function (stanza) {
             }
 
             function endSyncProcesses() {
-                scriptProfile.giveNotifications(targetProfile.username, [{ type: 8, params: { data: clanEventLocalize } }], true, function (nAddResultTarget) {
+                scriptProfile.giveNotifications(targetProfile.username, [{ type: 8, params: { data: clanEventLocalize } }], function (nAddResultTarget) {
                     if (!nAddResultTarget) {
                         //console.log("[" + stanza.attrs.from + "][ClanSetMemberRole]:Failed to add notification to target profile");
                     }

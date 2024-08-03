@@ -13,7 +13,6 @@ exports.module = function (stanza) {
         return;
     }
 
-    var nickname = stanza.children[0].children[0].attrs.nickname;
     var profile_id = Number(stanza.children[0].children[0].attrs.profile_id);
 
     global.db.warface.profiles.findOne({ username: profileObject.username }, { projection: { "nick": 1, "clan_name": 1, "clan_role": 1 } }, function (errProfile, resultProfile) {
@@ -42,19 +41,13 @@ exports.module = function (stanza) {
             return;
         }
 
-        if (resultProfile.nick == nickname || resultProfile._id == profile_id) {
+        if (resultProfile._id == profile_id) {
             //console.log("["+stanza.attrs.from+"][ClanKick]:It is impossible to kick yourself");
             global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "5" });
             return;
         }
 
-        var queryUpdate = { nick: nickname, clan_name: resultProfile.clan_name };
-
-        if (!Number.isNaN(profile_id)) {
-            queryUpdate = { _id: profile_id, clan_name: resultProfile.clan_name };
-        }
-
-        global.db.warface.profiles.findOneAndUpdate(queryUpdate, { $set: { clan_name: "", clan_points: 0, clan_role: 0 } }, { projection: { "username": 1, "nick": 1 } }, function (errUpdate, resultUpdate) {
+        global.db.warface.profiles.findOneAndUpdate({ _id: profile_id, clan_name: resultProfile.clan_name }, { $set: { clan_name: "", clan_points: 0, clan_role: 0 } }, { projection: { "username": 1, "nick": 1 } }, function (errUpdate, resultUpdate) {
 
             if (errUpdate) {
                 //console.log("["+stanza.attrs.from+"][ClanKick]:Failed to execute db query");
@@ -79,7 +72,7 @@ exports.module = function (stanza) {
                     //console.log("[" + stanza.attrs.from + "][ClanKick]:UpdateMembersInfo Failed");
                 }
 
-                scriptProfile.giveNotifications(resultUpdateProfileTarget.username, [{ type: 8, params: { data: "@clans_you_was_kicked" } }], true, function (nAddResultTarget) {
+                scriptProfile.giveNotifications(resultUpdateProfileTarget.username, [{ type: 8, params: { data: "@clans_you_was_kicked" } }], function (nAddResultTarget) {
 
                     if (!nAddResultTarget) {
                         //console.log("[" + stanza.attrs.from + "][ClanKick]:Failed to add notification to target profile");

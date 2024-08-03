@@ -10,7 +10,5 @@ exports.module = function (stanza) {
         return;
     }
 
-    global.xmppClient.request(stanza.attrs.from, new ltxElement('gameroom_quickplay_canceled', { uid: "" }));
-    global.xmppClient.response(stanza, new ltxElement('gameroom_quickplay_cancel', { success: 1 }))
-
+    global.xmppClient.response(stanza, new ltxElement('gameroom_quickplay_cancel'));
 }

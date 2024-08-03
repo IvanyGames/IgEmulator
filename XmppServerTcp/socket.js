@@ -1,18 +1,15 @@
-﻿var EventEmitter = require('events').EventEmitter;
-var net = require('net')
-var tls = require('tls')
-var fs = require('fs')
-var StreamParser = require('./parser.js');
+const EventEmitter = require('events').EventEmitter;
+const net = require('net')
+const tls = require('tls')
+const fs = require('fs')
+const StreamParser = require('./streamparser')
+const listenerTypes = require('./listenerTypes')
 
-exports.create = function (aXmppHost, aUseTls, aTlsKey, aTlsCert, aListenerType, aListenerId, aSocketSpeedLimit, aCallback) {
+exports.create = function (aXmppHost, aUseTls, aTlsPfx, aListenerType, aListenerId, aSocketSpeedLimit, aSocketProtect, aCallback) {
 	var tlsCert = null;
 	if (aUseTls == true) {
-		const vTlsKey = fs.readFileSync(aTlsKey, 'ascii');
-		const vTlsCert = fs.readFileSync(aTlsCert, 'ascii');
-
 		tlsCert = tls.createSecureContext({
-			key: vTlsKey,
-			cert: vTlsCert,
+			pfx: fs.readFileSync(aTlsPfx),
 			ciphers: "DEFAULT:@SECLEVEL=0"
 		});
 	}
@@ -34,6 +31,8 @@ exports.create = function (aXmppHost, aUseTls, aTlsKey, aTlsCert, aListenerType,
 		connection.host = aXmppHost;
 
 		connection.unauthTimer = setTimeout(disconnectUnauthorizedConnectionByTimeout, global.config.connectionsUnauthorizedTimeout * 1000, connection);
+		connection.inactivityTimer = null;
+		connection.activityLastTime = Math.round(new Date().getTime() / 1000);
 
 		connection.pingTimer = null;
 		connection.pingId = 0;
@@ -51,12 +50,12 @@ exports.create = function (aXmppHost, aUseTls, aTlsKey, aTlsCert, aListenerType,
 			if (currentTime - connection.speedLimiterTickTime > 1000) {
 				connection.speedLimiterTickTime = currentTime;
 				connection.speedLimiterTotalBytes = 0;
-				//console.log("["+connection.listenerType+"]["+connection.listenerId+"][" + connection.ip +":"+ connection.port+"]["+connection.jid+"][Info]:SpeedLimiter Cleared");
+				//console.log("["+listenerTypes[connection.listenerType]+"]["+connection.listenerId+"][" + connection.ip +":"+ connection.port+"]["+connection.jid+"][Info]:SpeedLimiter Cleared");
 			}
 
 			connection.speedLimiterTotalBytes = connection.speedLimiterTotalBytes + readBytes;
 
-			//console.log("["+connection.listenerType+"]["+connection.listenerId+"][" + connection.ip +":"+ connection.port+"]["+connection.jid+"][Info]:SpeedLimiter speed:"+connection.speedLimiterTotalBytes+"b/s");
+			//console.log("["+listenerTypes[connection.listenerType]+"]["+connection.listenerId+"][" + connection.ip +":"+ connection.port+"]["+connection.jid+"][Info]:SpeedLimiter speed:"+connection.speedLimiterTotalBytes+"b/s");
 			if (connection.speedLimiterTotalBytes > aSocketSpeedLimit) {
 
 				var sockWaitTime = (((connection.speedLimiterTotalBytes - aSocketSpeedLimit) / aSocketSpeedLimit) * 1000) + (1000 - (currentTime - connection.speedLimiterTickTime));
@@ -75,29 +74,26 @@ exports.create = function (aXmppHost, aUseTls, aTlsKey, aTlsCert, aListenerType,
 					}
 				}, sockWaitTime);
 
-				//console.log("["+connection.listenerType+"]["+connection.listenerId+"][" + connection.ip +":"+ connection.port+"]["+connection.jid+"][Info]:SpeedLimiter Limit time:"+sockWaitTime+" ms");
+				//console.log("["+listenerTypes[connection.listenerType]+"]["+connection.listenerId+"][" + connection.ip +":"+ connection.port+"]["+connection.jid+"][Info]:SpeedLimiter Limit time:"+sockWaitTime+" ms");
 			}
 		}
 
 		//Stream Parser
 		var streamParser = new StreamParser();
 
-		streamParser.onStreamStart = function (name, attrs) {
+		streamParser.on('streamStart', function (attrs) {
 			connection.emit("streamStart", attrs);
-		};
+			//console.log(attrs);
+		})
 
-		streamParser.onStanza = function (stanza) {
+		streamParser.on('stanza', function (stanza) {
 			//console.log("[Stanza]:Input");
 			//console.log(stanza + "\n");
-			try {
-				//fs.appendFileSync("./XmppServerLog.xml", "[" + new Date().toLocaleString() + "] Input-> " + stanza + "\n");
-			} catch (e) {
-
-			}
+			//fs.appendFileSync("./XmppServerLog.xml", "[" + new Date().toLocaleString() + "][" + connection.ip + ":" + connection.port + "] Input-> " + stanza + "\n");
 			connection.emit("stanza", stanza);
-		};
+		});
 
-		streamParser.onError = function (err) {
+		streamParser.on('error', function (err) {
 			switch (err) {
 				case 1:
 					connection.sendEnd("<xml-not-well-formed xmlns='urn:ietf:params:xml:ns:xmpp-streams'/>");
@@ -108,24 +104,40 @@ exports.create = function (aXmppHost, aUseTls, aTlsKey, aTlsCert, aListenerType,
 				default:
 					connection.sendEnd("<xml-not-well-formed xmlns='urn:ietf:params:xml:ns:xmpp-streams'/>");
 			}
-		};
+		});
 
-		streamParser.onStreamEnd = function () {
+		//streamParser.on('end', function () {
+		//	connection.Close();
+		//});			
+
+		streamParser.on('endElement', function () {
 			connection.Close();
-		};
-
+		});
 		connection.send = function (data, callback) {
 			//console.log("[Stanza]:Output");
 			//console.log(data + "\n");
-			try {
-				//fs.appendFileSync("./XmppServerLog.xml", "[" + new Date().toLocaleString() + "] Output-> " + data + "\n");
-			} catch (e) {
 
-			}
-			if (connection.socketTls != null) {
-				connection.socketTls.write(data, "utf8", callback);
+			//fs.appendFileSync("./XmppServerLog.xml", "[" + new Date().toLocaleString() + "][" + connection.ip + ":" + connection.port + "] Output-> " + data + "\n");
+
+			var sendBuffer;
+
+			if (aSocketProtect) {
+				var dataSize = Buffer.byteLength(data);
+				sendBuffer = Buffer.alloc(dataSize + 12);
+				sendBuffer.writeUint32LE(4277001901, 0);
+				sendBuffer.writeUint32LE(dataSize, 4);
+				sendBuffer.writeUint32LE(0, 8);
+				sendBuffer.write(data, 12);
 			} else {
-				connection.socket.write(data, "utf8", callback);
+				sendBuffer = data;
+			}
+			
+			if (connection.socketTls != null) {
+				//fs.appendFileSync("./TcpServerLog.xml", "[" + new Date().toLocaleString() + "][" + connection.ip + ":" + connection.port + "] OutputTls-> " + data + "\n");
+				connection.socketTls.write(sendBuffer, "utf8", callback);
+			} else {
+				//fs.appendFileSync("./TcpServerLog.xml", "[" + new Date().toLocaleString() + "][" + connection.ip + ":" + connection.port + "] Output-> " + data + "\n");
+				connection.socket.write(sendBuffer, "utf8", callback);
 			}
 		}
 
@@ -141,10 +153,8 @@ exports.create = function (aXmppHost, aUseTls, aTlsKey, aTlsCert, aListenerType,
 				});
 				//console.log(connection.socketTls.getCipher())
 				connection.socketTls.on('data', function (data) {
-					//console.log("[RawTls]:Input");
-					//console.log(data+"\n");					
-
 					//console.log(connection.socketTls.getCipher())
+					//fs.appendFileSync("./TcpServerLog.xml", "[" + new Date().toLocaleString() + "][" + connection.ip + ":" + connection.port + "] InputTls-> " + data + "\n");
 					streamParser.write(data);
 					if (aSocketSpeedLimit > 0) {
 						connection.speedLimiterUpdate(data.length);
@@ -177,6 +187,10 @@ exports.create = function (aXmppHost, aUseTls, aTlsKey, aTlsCert, aListenerType,
 			if (global.config.pingEnable == true) {
 				connection.pingTimer = setInterval(pingSend, global.config.pingInterval * 1000, connection);
 			}
+
+			if (global.config.connectionsInactivityCheckEnable == true) {
+				connection.inactivityTimer = setInterval(inactivityCheck, global.config.connectionsInactivityCheckInterval * 1000, connection);
+			}
 		}
 
 		connection.sendEnd = function (data) {
@@ -188,10 +202,7 @@ exports.create = function (aXmppHost, aUseTls, aTlsKey, aTlsCert, aListenerType,
 		}
 
 		connection.socket.on('data', function (data) {
-
-			//console.log("[Raw]:Input");
-			//console.log(data+"\n");				
-
+			//fs.appendFileSync("./TcpServerLog.xml", "[" + new Date().toLocaleString() + "][" + connection.ip + ":" + connection.port + "] Input-> " + data + "\n");
 			streamParser.write(data);
 			if (aSocketSpeedLimit > 0) {
 				connection.speedLimiterUpdate(data.length);
@@ -205,6 +216,10 @@ exports.create = function (aXmppHost, aUseTls, aTlsKey, aTlsCert, aListenerType,
 
 			if (connection.pingTimer != null) {
 				clearInterval(connection.pingTimer);
+			}
+
+			if (connection.inactivityTimer != null) {
+				clearInterval(connection.inactivityTimer);
 			}
 
 			//streamParser.end();
@@ -222,9 +237,11 @@ exports.create = function (aXmppHost, aUseTls, aTlsKey, aTlsCert, aListenerType,
 	aCallback(server);
 }
 
+
+
 function disconnectUnauthorizedConnectionByTimeout(connection) {
 	if (connection != null) {
-		console.log("[" + connection.listenerType + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Unauthorized connection timeout");
+		console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Unauthorized connection timeout");
 		connection.Close();
 	}
 }
@@ -233,4 +250,12 @@ function pingSend(connection) {
 	connection.pingId++;
 	connection.send("<iq type='get' to='" + connection.jid + "' id='ping" + connection.pingId + "' from='" + connection.host + "' xmlns:stream='http://etherx.jabber.org/streams'><ping xmlns='urn:xmpp:ping'/></iq>");
 	connection.pingTime = new Date().getTime();
+}
+
+function inactivityCheck(connection) {
+	var curentTime = Math.round(new Date().getTime() / 1000);
+	if ((curentTime - connection.activityLastTime) > global.config.connectionsInactivityCheckTimeout) {
+		console.log("[" + listenerTypes[connection.listenerType] + "][" + connection.listenerId + "][" + connection.ip + ":" + connection.port + "][" + connection.jid + "][Error]:Inactivity check timeout");
+		connection.Close();
+	}
 }

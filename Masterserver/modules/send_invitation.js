@@ -14,26 +14,21 @@ exports.module = function (stanza) {
     }
 
     var type = stanza.children[0].children[0].attrs.type;
-    var target = stanza.children[0].children[0].attrs.target;
-    var nickname = stanza.children[0].children[0].attrs.nickname;
     var target_id = Number(stanza.children[0].children[0].attrs.target_id);
-
-    if (nickname) {
-        target = nickname;
-    }
+    var target = stanza.children[0].children[0].attrs.target;
 
     function resultCallback(code) {
         if (code) {
             global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: String(code) });
         } else {
-            global.xmppClient.response(stanza, new ltxElement(stanza.children[0].children[0].name, { type: type, target: target, nickname: nickname }));
+            global.xmppClient.response(stanza, new ltxElement("send_invitation", { type: type, target_id: target_id }));
         }
         //console.timeEnd("t");
     }
 
     switch (type) {
         case "16":
-            sendAddClanInvitation(stanza, profileObject, target, target_id, resultCallback);
+            sendAddClanInvitation(stanza, profileObject, target_id, resultCallback);
             break;
         case "64":
             sendAddFriendInvitation(stanza, profileObject, target, resultCallback);
@@ -43,9 +38,9 @@ exports.module = function (stanza) {
     }
 }
 
-function sendAddClanInvitation(stanza, profileObject, target, target_id, callback) {
+function sendAddClanInvitation(stanza, profileObject, target_id, callback) {
 
-    global.db.warface.profiles.findOne({ username: profileObject.username }, { projection: { "nick": 1, "clan_name": 1, "clan_role": 1, "notifications": 1 } }, function (errProfile, resultProfile) {
+    global.db.warface.profiles.findOne({ username: profileObject.username }, { projection: { "clan_name": 1, "clan_role": 1, "notifications": 1 } }, function (errProfile, resultProfile) {
 
         if (errProfile) {
             //console.log("[" + stanza.attrs.from + "][SendInvitation][AddClan]:Failed to getting data from the database");
@@ -59,7 +54,7 @@ function sendAddClanInvitation(stanza, profileObject, target, target_id, callbac
             return;
         }
 
-        if (target == resultProfile.nick || target_id == resultProfile._id) {
+        if (target_id == resultProfile._id) {
             //console.log("[" + stanza.attrs.from + "][SendInvitation][AddClan]:Failed, it is forbidden to invite yourself");
             callback(12);
             return;
@@ -85,19 +80,13 @@ function sendAddClanInvitation(stanza, profileObject, target, target_id, callbac
                 return;
             }
 
-            if (resultMembersCount > global.config.clan_members_limit && global.config.clan_members_limit != -1) {
+            if (resultMembersCount > global.config.clan_members_limit) {
                 //console.log("[" + stanza.attrs.from + "][SendInvitation][AddClan]:Failed, clan is full");
                 callback(11);
                 return;
             }
 
-            var queryProfileTarget = { nick: target };
-
-            if (!Number.isNaN(target_id)) {
-                queryProfileTarget = { _id: target_id };
-            }
-
-            global.db.warface.profiles.findOne(queryProfileTarget, { projection: { "username": 1, "clan_name": 1, "notifications": 1 } }, function (errProfileTarget, resultProfileTarget) {
+            global.db.warface.profiles.findOne({ _id: target_id }, { projection: { "username": 1, "clan_name": 1, "persistent_settings.options.social*chat*dnd_mode": 1, "notifications": 1 } }, function (errProfileTarget, resultProfileTarget) {
 
                 if (errProfileTarget) {
                     //console.log("[" + stanza.attrs.from + "][SendInvitation][AddClan]:Failed to getting target data from the database");
@@ -130,9 +119,22 @@ function sendAddClanInvitation(stanza, profileObject, target, target_id, callbac
                 }
 
                 //Тут проверка типо если игрока недавно исключили
-                //--- 7
 
-                scriptProfile.giveNotifications(resultProfileTarget.username, [{ type: 16, params: { username: profileObject.username, initiator: resultProfile.nick, clan_name: resultProfile.clan_name, clan_id: "0" } }], true, function (nAddResult) {
+                if (resultProfileTarget.persistent_settings.options && resultProfileTarget.persistent_settings.options["social*chat*dnd_mode"] == "1") {
+                    //console.log("[" + stanza.attrs.from + "][SendInvitation][AddClan]:Target use dnd mode");
+                    callback(15);
+                    return;
+                }
+
+                /*
+                if (resultProfileTarget.experience < 0) {
+                    console.log("[" + stanza.attrs.from + "][SendInvitation][AddClan]:Target have low rank");
+                    callback(16);
+                    return;
+                }
+                */
+
+                scriptProfile.giveNotifications(resultProfileTarget.username, [{ type: 16, params: { username: profileObject.username, profile_id: profileObject._id, name: profileObject.nick, clan_name: profileObject.clan_name, experience: profileObject.experience, badge: profileObject.banner_badge, mark: profileObject.banner_mark, stripe: profileObject.banner_stripe } }], function (nAddResult) {
                     if (!nAddResult) {
                         //console.log("[" + stanza.attrs.from + "][SendInvitation][AddFriend]:Failed to give notification");
                         callback(22);
@@ -170,7 +172,7 @@ X 16 - @clans_invite_result_low_rank - У игрока %1 слишком низ�
 
 function sendAddFriendInvitation(stanza, profileObject, target, callback) {
 
-    global.db.warface.profiles.find({ $or: [{ username: profileObject.username }, { nick: target }] }, { projection: { "username": 1, "nick": 1, "notifications": 1, "friends": 1 } }).limit(2).toArray(function (errProfiles, resultProfiles) {
+    global.db.warface.profiles.find({ $or: [{ username: profileObject.username }, { nick: target }] }, { projection: { "username": 1, "nick": 1, "persistent_settings.options.social*chat*dnd_mode": 1, "notifications": 1, "friends": 1 } }).limit(2).toArray(function (errProfiles, resultProfiles) {
 
         if (errProfiles) {
             //console.log("[" + stanza.attrs.from + "][SendInvitation][AddFriend]:Failed to getting data from the database");
@@ -218,19 +220,25 @@ function sendAddFriendInvitation(stanza, profileObject, target, callback) {
             return;
         }
 
-        if (myProfile.friends.length >= global.config.friends_limit && global.config.friends_limit != -1) {
+        if (myProfile.friends.length >= global.config.friends_limit) {
             //console.log("[" + stanza.attrs.from + "][SendInvitation][AddFriend]:Friend list is full");
             callback(11);
             return;
         }
 
-        if (targetProfile.friends.length >= global.config.friends_limit && global.config.friends_limit != -1) {
+        if (targetProfile.friends.length >= global.config.friends_limit) {
             //console.log("[" + stanza.attrs.from + "][SendInvitation][AddFriend]:Friend list target is full");
             callback(12);
             return;
         }
 
-        scriptProfile.giveNotifications(targetProfile.username, [{ type: 64, params: { username: myProfile.username, initiator: myProfile.nick } }], true, function (nAddResult) {
+        if (targetProfile.persistent_settings.options && targetProfile.persistent_settings.options["social*chat*dnd_mode"] == "1") {
+            //console.log("[" + stanza.attrs.from + "][SendInvitation][AddFriend]:Target use dnd mode");
+            callback(15);
+            return;
+        }
+
+        scriptProfile.giveNotifications(targetProfile.username, [{ type: 64, params: { username: profileObject.username, profile_id: profileObject._id, name: profileObject.nick, clan_name: profileObject.clan_name, experience: profileObject.experience, badge: profileObject.banner_badge, mark: profileObject.banner_mark, stripe: profileObject.banner_stripe } }], function (nAddResult) {
             if (!nAddResult) {
                 //console.log("[" + stanza.attrs.from + "][SendInvitation][AddFriend]:Failed to give notification");
                 callback(7);

@@ -4,6 +4,15 @@ var moduleJoinChannel = require('./join_channel.js')
 var RegExpNameRU = new RegExp("[^-.0-9_А-ЯЁа-яё]");
 var RegExpNameEN = new RegExp("[^-.0-9_A-Za-z]");
 
+//player_gained_money
+//player_damage
+//player_max_damage
+//player_resurrected_by_medic
+
+//player_sessions_lost_connection
+//player_kills_player_friendly
+//player_sessions_kicked
+
 var defaultStats = [
 	{ "stat": 'player_online_time', "Value": 0 },
 	{ "stat": 'player_max_session_time', "Value": 0 },
@@ -14,16 +23,28 @@ var defaultStats = [
 	{ "stat": 'player_resurrected_by_coin', "Value": 0 },
 	{ "stat": 'player_climb_assists', "Value": 0 },
 	{ "stat": 'player_resurrect_made', "Value": 0 },
+	{ "stat": 'player_gained_money', "Value": 0 },
+	{ "stat": 'player_damage', "Value": 0 },
+	{ "stat": 'player_max_damage', "Value": 0 },
+	{ "stat": 'player_resurrected_by_medic', "Value": 0 },
+	{ "mode": 'PVP', "stat": 'player_kills_ai', "Value": 0 },
 	{ "mode": 'PVP', "stat": 'player_kills_player', "Value": 0 },
 	{ "mode": 'PVP', "stat": 'player_kill_streak', "Value": 0 },
 	{ "mode": 'PVP', "stat": 'player_kills_melee', "Value": 0 },
 	{ "mode": 'PVP', "stat": 'player_kills_claymore', "Value": 0 },
 	{ "mode": 'PVP', "stat": 'player_deaths', "Value": 0 },
 	{ "mode": 'PVP', "stat": 'player_sessions_left', "Value": 0 },
+	{ "mode": 'PVP', "stat": 'player_kills_player_friendly', "Value": 0 },
+	{ "mode": 'PVP', "stat": 'player_sessions_lost_connection', "Value": 0 },
+	{ "mode": 'PVP', "stat": 'player_sessions_kicked', "Value": 0 },
 	{ "class": 'Rifleman', "mode": 'PVP', "stat": 'player_shots', "Value": 0 },
 	{ "class": 'Rifleman', "mode": 'PVP', "stat": 'player_hits', "Value": 0 },
 	{ "class": 'Rifleman', "mode": 'PVP', "stat": 'player_headshots', "Value": 0 },
 	{ "class": 'Rifleman', "mode": 'PVP', "stat": 'player_playtime', "Value": 0 },
+	{ "class": 'Heavy', "mode": 'PVP', "stat": 'player_shots', "Value": 0 },
+	{ "class": 'Heavy', "mode": 'PVP', "stat": 'player_hits', "Value": 0 },
+	{ "class": 'Heavy', "mode": 'PVP', "stat": 'player_headshots', "Value": 0 },
+	{ "class": 'Heavy', "mode": 'PVP', "stat": 'player_playtime', "Value": 0 },
 	{ "class": 'Recon', "mode": 'PVP', "stat": 'player_shots', "Value": 0 },
 	{ "class": 'Recon', "mode": 'PVP', "stat": 'player_hits', "Value": 0 },
 	{ "class": 'Recon', "mode": 'PVP', "stat": 'player_headshots', "Value": 0 },
@@ -40,15 +61,23 @@ var defaultStats = [
 	{ "difficulty": '', "mode": 'PVP', "stat": 'player_sessions_lost', "Value": 0 },
 	{ "difficulty": '', "mode": 'PVP', "stat": 'player_sessions_draw', "Value": 0 },
 	{ "mode": 'PVE', "stat": 'player_kills_ai', "Value": 0 },
+	{ "mode": 'PVE', "stat": 'player_kills_player', "Value": 0 },
 	{ "mode": 'PVE', "stat": 'player_kill_streak', "Value": 0 },
 	{ "mode": 'PVE', "stat": 'player_kills_melee', "Value": 0 },
 	{ "mode": 'PVE', "stat": 'player_kills_claymore', "Value": 0 },
 	{ "mode": 'PVE', "stat": 'player_deaths', "Value": 0 },
 	{ "mode": 'PVE', "stat": 'player_sessions_left', "Value": 0 },
+	{ "mode": 'PVE', "stat": 'player_kills_player_friendly', "Value": 0 },
+	{ "mode": 'PVE', "stat": 'player_sessions_lost_connection', "Value": 0 },
+	{ "mode": 'PVE', "stat": 'player_sessions_kicked', "Value": 0 },
 	{ "class": 'Rifleman', "mode": 'PVE', "stat": 'player_shots', "Value": 0 },
 	{ "class": 'Rifleman', "mode": 'PVE', "stat": 'player_hits', "Value": 0 },
 	{ "class": 'Rifleman', "mode": 'PVE', "stat": 'player_headshots', "Value": 0 },
 	{ "class": 'Rifleman', "mode": 'PVE', "stat": 'player_playtime', "Value": 0 },
+	{ "class": 'Heavy', "mode": 'PVE', "stat": 'player_shots', "Value": 0 },
+	{ "class": 'Heavy', "mode": 'PVE', "stat": 'player_hits', "Value": 0 },
+	{ "class": 'Heavy', "mode": 'PVE', "stat": 'player_headshots', "Value": 0 },
+	{ "class": 'Heavy', "mode": 'PVE', "stat": 'player_playtime', "Value": 0 },
 	{ "class": 'Recon', "mode": 'PVE', "stat": 'player_shots', "Value": 0 },
 	{ "class": 'Recon', "mode": 'PVE', "stat": 'player_hits', "Value": 0 },
 	{ "class": 'Recon', "mode": 'PVE', "stat": 'player_headshots', "Value": 0 },
@@ -61,13 +90,94 @@ var defaultStats = [
 	{ "class": 'Medic', "mode": 'PVE', "stat": 'player_hits', "Value": 0 },
 	{ "class": 'Medic', "mode": 'PVE', "stat": 'player_headshots', "Value": 0 },
 	{ "class": 'Medic', "mode": 'PVE', "stat": 'player_playtime', "Value": 0 },
-	{ "difficulty": 'easy', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
-	{ "difficulty": 'easy', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
-	{ "difficulty": 'normal', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
-	{ "difficulty": 'normal', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
-	{ "difficulty": 'hard', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
-	{ "difficulty": 'hard', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'easymission', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'easymission', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'normalmission', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'normalmission', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'hardmission', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'hardmission', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'trainingmission', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'trainingmission', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'survivalmission', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'survivalmission', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'campaignsections', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'campaignsections', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'campaignsection1', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'campaignsection1', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'campaignsection2', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'campaignsection2', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'campaignsection3', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'campaignsection3', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'volcanoeasy', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'volcanoeasy', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'volcanonormal', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'volcanonormal', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'volcanohard', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'volcanohard', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'zombieeasy', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'zombieeasy', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'zombienormal', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'zombienormal', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'zombiehard', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'zombiehard', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'anubiseasy', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'anubiseasy', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'anubisnormal', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'anubisnormal', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'anubishard', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'anubishard', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'anubiseasy2', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'anubiseasy2', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'anubisnormal2', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'anubisnormal2', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'anubishard2', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'anubishard2', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'zombietowereasy', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'zombietowereasy', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'zombietowernormal', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'zombietowernormal', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'zombietowerhard', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'zombietowerhard', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'icebreakereasy', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'icebreakereasy', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'icebreakernormal', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'icebreakernormal', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'icebreakerhard', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'icebreakerhard', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'chernobyleasy', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'chernobyleasy', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'chernobylnormal', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'chernobylnormal', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'chernobylhard', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'chernobylhard', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'japaneasy', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'japaneasy', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'japannormal', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'japannormal', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'japanhard', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'japanhard', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'marseasy', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'marseasy', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'marsnormal', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'marsnormal', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'marshard', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'marshard', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'pve_arena', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'pve_arena', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'solomission', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'solomission', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'blackwood', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'blackwood', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'swarm', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'swarm', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'heist', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'heist', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'labirinthsurvival', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'labirinthsurvival', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
+	{ "difficulty": 'nemesissurvival', "mode": 'PVE', "stat": 'player_sessions_won', "Value": 0 },
+	{ "difficulty": 'nemesissurvival', "mode": 'PVE', "stat": 'player_sessions_lost', "Value": 0 },
 	{ "class": 'Rifleman', "item_type": '', "stat": 'player_wpn_usage', "Value": 0 },
+	{ "class": 'Heavy', "item_type": '', "stat": 'player_wpn_usage', "Value": 0 },
 	{ "class": 'Recon', "item_type": '', "stat": 'player_wpn_usage', "Value": 0 },
 	{ "class": 'Engineer', "item_type": '', "stat": 'player_wpn_usage', "Value": 0 },
 	{ "class": 'Medic', "item_type": '', "stat": 'player_wpn_usage', "Value": 0 }
@@ -89,13 +199,12 @@ exports.module = function (stanza) {
 
 	if (Number.isNaN(hw_id) || !Number.isSafeInteger(hw_id) || hw_id < 0 || hw_id > 2147483647) {
 		//console.log("["+stanza.attrs.from+"][CreateProfile]:Uncorrect Hwid");
-		//global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "13" });
-		//return;
-		hw_id = 0;
+		global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "13" });
+		return;
 	}
 
 	//Проверка версии игры
-	if (version && global.startupParams.ver && version != global.startupParams.ver) {
+	if (version != global.startupParams.ver) {
 		//console.log("["+stanza.attrs.from+"][CreateProfile]:Version mismatch");
 		global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "4" });
 		return;
@@ -117,6 +226,10 @@ exports.module = function (stanza) {
 	}	
 	*/
 
+	if (nickname == "") {
+		nickname = "Игрок" + username;
+	}
+
 	//Проверка длины и символов ника
 	if (!nickname || nickname.length < 4 || nickname.length > 16 || (RegExpNameRU.test(nickname) && RegExpNameEN.test(nickname))) {
 		//console.log("["+stanza.attrs.from+"][CreateProfile]:Incorrect nickname");
@@ -127,14 +240,12 @@ exports.module = function (stanza) {
 	//Проверка на мат
 	//TODO
 
-	/*
 	//Проверка наличия головы в списке предметов
-	if (global.resources.items.data[global.resources.items.data.findIndex(function (x) { return x.name == head; })]) {
+	if (!global.cacheJsonQuickAccess.items.name[head]) {
 		//console.log("["+stanza.attrs.from+"][CreateProfile]:Incorrect head");
 		global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "9" });
 		return;
 	}
-	*/
 
 	сreateProfile({
 		"username": username,
@@ -159,40 +270,49 @@ exports.module = function (stanza) {
 		"expired_items": [],
 
 		"missions_unlocked": [
-			"easy",
-			"normal",
-			"hard",
 			"trainingmission",
 			"easymission",
 			"normalmission",
 			"hardmission",
 			"survivalmission",
+			"campaignsections",
 			"campaignsection1",
 			"campaignsection2",
 			"campaignsection3",
-			"campaignsections",
-			"zombieeasy",
-			"zombienormal",
-			"zombiehard",
 			"volcanoeasy",
 			"volcanonormal",
 			"volcanohard",
-			"volcanosurvival",
+			"zombieeasy",
+			"zombienormal",
+			"zombiehard",
 			"anubiseasy",
 			"anubisnormal",
 			"anubishard",
+			"anubiseasy2",
+			"anubisnormal2",
+			"anubishard2",
 			"zombietowereasy",
 			"zombietowernormal",
 			"zombietowerhard",
 			"icebreakereasy",
 			"icebreakernormal",
-			"icebreakerhard"
+			"icebreakerhard",
+			"chernobyleasy",
+			"chernobylnormal",
+			"chernobylhard",
+			"japaneasy",
+			"japannormal",
+			"japanhard",
+			"marseasy",
+			"marsnormal",
+			"marshard",
+			"pve_arena",
+			"blackwood"
 		],
 
-		"tutorial_passed": false,
 		"tutorials_passed": [],
 
-		"classes_unlocked": [0, 2, 3, 4],
+		"classes_unlocked": [0, 1, 2, 3, 4],
 
 		"persistent_settings": {},
 
@@ -222,9 +342,10 @@ exports.module = function (stanza) {
 			"reward": -1
 		},
 
-		"win_limits": {},
-
-		"pvp_rating_points": 0,
+		"first_win_of_day": {
+			"time": Math.round(new Date().getTime() / 1000),
+			"modes": []
+		},
 
 		"clan_points": 0,
 		"clan_role": 0,
@@ -235,12 +356,14 @@ exports.module = function (stanza) {
 
 		"friends": [],
 
-		"authorization_events": [],
-
 		"remote_give": {
-			"items": [],
-			"achievements": []
-		}
+			"items":[],
+			"achievements":[]
+		},
+
+		"authorization_events": [[hw_id, Math.round(new Date().getTime() / 1000)]],
+        
+		"mute": {time: 0, reason: ""}
 
 	}, global.db.warface.profiles, (errCreate, resultCreate) => {
 
@@ -316,7 +439,7 @@ create_profile
 4-Несовпадение версий игры
 5-Skip
 6-Skip
-7-Имя 'Ивани' уже занято
+7-Имя '4324432432' уже занято
 
 <iq to="masterserver@russia.warface/pve_001" id="uid0000009d" type="get" from="1@russia.warface/GameClient" xmlns="jabber:client">
 <query xmlns="urn:cryonline:k01">

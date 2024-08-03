@@ -1,105 +1,67 @@
 var ltxElement = require('ltx').Element
 var gameroom_leave = require('./gameroom_leave.js')
 var scriptGameroom = require('../scripts/gameroom.js');
+var scriptTools = require('../scripts/tools.js');
 
-exports.module = function (stanza, isAutomaticCreation, manualRoomType, manualMission, manualRoomName) {
+exports.module = function (stanza) {
 
-    if (!isAutomaticCreation) {
+    var profileObject = global.users.jid[stanza.attrs.from];
 
-        var profileObject = global.users.jid[stanza.attrs.from];
-
-        if (!profileObject) {
-            //console.log("[" + stanza.attrs.from + "][GameroomOpen]:Profile not found");
-            global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "25" });
-            return;
-        }
-
+    if (!profileObject) {
+        //console.log("[" + stanza.attrs.from + "][GameroomOpen]:Profile not found");
+        global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "25" });
+        return;
     }
 
-    var room_name = null;
+    var room_name = stanza.children[0].children[0].attrs.room_name;
 
-    var team_id = null;
-    var status = null;
-    var class_id = null;
+    var team_id = stanza.children[0].children[0].attrs.team_id;
+    var status = stanza.children[0].children[0].attrs.status;
+    var class_id = stanza.children[0].children[0].attrs.class_id;
 
-    var room_type = null;
+    var room_type = stanza.children[0].children[0].attrs.room_type;
+    //room_type = 8;
 
-    var private = null;
-    var mission = null;
+    var private = stanza.children[0].children[0].attrs.private;
+    var mission = stanza.children[0].children[0].attrs.mission;
 
-    var friendly_fire = null;
-    var enemy_outlines = null;
-    var auto_team_balance = null;
-    var dead_can_chat = null;
-    var join_in_the_process = null;
-    var max_players = null;
-    var round_limit = null;
-    var inventory_slot = null;
+    var friendly_fire = stanza.children[0].children[0].attrs.friendly_fire;
+    var enemy_outlines = stanza.children[0].children[0].attrs.enemy_outlines;
+    var auto_team_balance = stanza.children[0].children[0].attrs.auto_team_balance;
+    var join_in_the_process = stanza.children[0].children[0].attrs.join_in_the_process;
+    var max_players = stanza.children[0].children[0].attrs.max_players;
+    var round_limit = stanza.children[0].children[0].attrs.round_limit;
+    var preround_time = stanza.children[0].children[0].attrs.preround_time;
+    var inventory_slot = stanza.children[0].children[0].attrs.inventory_slot;
+    var locked_spectator_camera = stanza.children[0].children[0].attrs.locked_spectator_camera;
+    var high_latency_autokick = stanza.children[0].children[0].attrs.high_latency_autokick;
+    var overtime_mode = stanza.children[0].children[0].attrs.overtime_mode;
 
-    var cClassRifleman = null;
-    var cClassEngineer = null;
-    var cClassMedic = null;
-    var cClassSniper = null;
-
-    if (!isAutomaticCreation) {
-
-        room_name = stanza.children[0].children[0].attrs.room_name;
-
-        team_id = stanza.children[0].children[0].attrs.team_id;
-        status = stanza.children[0].children[0].attrs.status;
-        class_id = stanza.children[0].children[0].attrs.class_id;
-
-        room_type = stanza.children[0].children[0].attrs.room_type;
-
-        private = stanza.children[0].children[0].attrs.private;
-        mission = stanza.children[0].children[0].attrs.mission;
-
-        friendly_fire = stanza.children[0].children[0].attrs.friendly_fire;
-        enemy_outlines = stanza.children[0].children[0].attrs.enemy_outlines;
-        auto_team_balance = stanza.children[0].children[0].attrs.auto_team_balance;
-        dead_can_chat = stanza.children[0].children[0].attrs.dead_can_chat;
-        join_in_the_process = stanza.children[0].children[0].attrs.join_in_the_process;
-        max_players = stanza.children[0].children[0].attrs.max_players;
-        round_limit = stanza.children[0].children[0].attrs.round_limit;
-        inventory_slot = stanza.children[0].children[0].attrs.inventory_slot;
-
-        cClassRifleman = stanza.children[0].children[0].getChild("class_rifleman");
-        cClassEngineer = stanza.children[0].children[0].getChild("class_engineer");
-        cClassMedic = stanza.children[0].children[0].getChild("class_medic");
-        cClassSniper = stanza.children[0].children[0].getChild("class_sniper");
-
-    }
-
-    if (isAutomaticCreation) {
-        var room_name = manualRoomName;
-        var room_type = manualRoomType;
-        var mission = manualMission;
-    }
+    var cClassRifleman = stanza.children[0].children[0].getChild("class_rifleman");
+    var cClassHeavy = stanza.children[0].children[0].getChild("class_heavy");
+    var cClassEngineer = stanza.children[0].children[0].getChild("class_engineer");
+    var cClassMedic = stanza.children[0].children[0].getChild("class_medic");
+    var cClassSniper = stanza.children[0].children[0].getChild("class_sniper");
 
     var class_rifleman = cClassRifleman ? cClassRifleman.attrs.enabled : null;
+    var class_heavy = cClassHeavy ? cClassHeavy.attrs.enabled : null;
     var class_engineer = cClassEngineer ? cClassEngineer.attrs.enabled : null;
     var class_medic = cClassMedic ? cClassMedic.attrs.enabled : null;
     var class_sniper = cClassSniper ? cClassSniper.attrs.enabled : null;
 
-    if (!isAutomaticCreation) {
-        gameroom_leave.module(stanza, false, false, 0);
-    }
+    gameroom_leave.module(stanza, false, false, 0);
 
     var missionInfo = (global.startupParams.channel == "pve" ? global.CacheQuickAccess.missionsPvE.uid[mission] : global.resources.missions.uid[mission]);
 
     if (!missionInfo) {
         //console.log("[" + stanza.attrs.from + "][GameroomOpen]:Mission is not found");
-        if (!isAutomaticCreation) {
-            global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '1' });
-        }
+        global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '1' });
         return;
     }
 
     if (!scriptGameroom.validateMissionAvailabilityOnChannel(missionInfo)) {
         //console.log("[" + stanza.attrs.from + "][GameroomOpen]:The mission is not available on this channel");
-        if (!isAutomaticCreation) {
-            global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '1' });
-        }
+        global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '1' });
         return;
     }
 
@@ -107,57 +69,62 @@ exports.module = function (stanza, isAutomaticCreation, manualRoomType, manualMi
 
     if (!scriptGameroom.validateMissionByRoomType(missionInfo, setRoomType)) {
         //console.log("[" + stanza.attrs.from + "][GameroomOpen]:Validate mission by room type failed");
-        if (!isAutomaticCreation) {
-            global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '1' });
-        }
+        global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '1' });
         return;
-    }
-
-    if (global.startupParams.swap_room_type == "1") {
-        if (setRoomType == 1) {
-            setRoomType = 2;
-        } else if (setRoomType == 2) {
-            setRoomType = 1;
-        }
     }
 
     var setRoomName = room_name;
     if (!scriptGameroom.validateRoomName(setRoomName)) {
         //console.log("[" + stanza.attrs.from + "][GameroomOpen]:RoomName validation failed");
-        if (!isAutomaticCreation) {
-            global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '16' });
-        }
+        global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '16' });
         return;
     }
 
     var setPrivate = (private == "1" ? 1 : 0);
 
-    var missionGameModeToValidate = (missionInfo.attrs.game_mode == "pve" && missionInfo.attrs.mission_type && scriptGameroom.getGameMode(missionInfo.attrs.mission_type)) ? missionInfo.attrs.mission_type : missionInfo.attrs.game_mode;
+    var missionGameModeToValidate = missionInfo.attrs.game_mode == "pve" ? missionInfo.attrs.mission_type : missionInfo.attrs.game_mode;
 
-    //var setSettingMinPlayersReady = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "min_players_ready", setRoomType));
-    var setSettingMinPlayersReady = 2;
+    var setSettingAutobalanceGroupMode = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "autobalance_group_mode", setRoomType));
+    var setSettingMaxPlayers = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "max_players", setRoomType));
+    var setSettingMinPlayersReady = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "min_players_ready", setRoomType));
     var setSettingNoTeamsMode = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "no_teams_mode", setRoomType));
     var setSettingTeamsReadyPlayersDiff = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "teams_ready_players_diff", setRoomType));
+    var setSettingClassPattern = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "class_pattern", setRoomType));
+    var setSettingAutostartIntermissionTimeoutSec = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "autostart_intermission_timeout_sec", setRoomType));
+    var setSettingAutostartPostSessionTimeoutSec = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "autostart_post_session_timeout_sec", setRoomType));
+    var setSettingAutostartJoinedIntermissionTimeoutSec = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "autostart_joined_intermission_timeout_sec", setRoomType));
+    var setSettingMinPlayersForRoomCreation = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "min_players_for_room_creation", setRoomType));
+    var setSettingMinPlayersForRoomJoining = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "min_players_for_room_joining", setRoomType));
+    var setSettingRestrictMmAfterStartSec = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "restrict_mm_after_start_sec", setRoomType));
+    var setSettingMaxGroupSize = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "max_group_size", setRoomType));
+    var setSettingInsufficientPlayersRoomClose = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "insufficient_players_room_close", setRoomType));
+    var setSettingSetObserverAllowed = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "set_observer_allowed", setRoomType));
+    var setSettingIgnoreStatistics = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "ignore_statistics", setRoomType));
+    var setSettingIgnoreAchievements = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "ignore_achievements", setRoomType));
+    var setSettingIgnoreContracts = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "ignore_contracts", setRoomType));
+    var setSettingIgnoreBattlePass = Number(scriptGameroom.getGameModeSettingValue(missionGameModeToValidate, "ignore_battle_pass", setRoomType));
 
     var setRestrictionFriendlyFire = Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "friendly_fire", setRoomType, friendly_fire));
     var setRestrictionEnemyOutlines = Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "enemy_outlines", setRoomType, enemy_outlines));
     var setRestrictionAutoTeamBalance = Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "auto_team_balance", setRoomType, auto_team_balance));
-    var setRestrictionDeadCanChat = Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "dead_can_chat", setRoomType, dead_can_chat));
     var setRestrictionJoinInTheProcess = Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "join_in_the_process", setRoomType, join_in_the_process));
     var setRestrictionMaxPlayers = Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "max_players", setRoomType, max_players));
     var setRestrictionRoundLimit = Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "round_limit", setRoomType, round_limit));
+    var setRestrictionPreroundTime = Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "preround_time", setRoomType, preround_time));
     var setRestrictionInventorySlot = Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "inventory_slot", setRoomType, inventory_slot));
+    var setRestrictionLockedSpectatorCamera = Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "locked_spectator_camera", setRoomType, locked_spectator_camera));
+    var setRestrictionHighLatencyAutokick = Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "high_latency_autokick", setRoomType, high_latency_autokick));
+    var setRestrictionOvertimeMode = Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "overtime_mode", setRoomType, overtime_mode));
 
     var setRestrictionClassRifleman = setRoomType != 1 ? Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "class_rifleman", setRoomType, class_rifleman)) : 1;
+    var setRestrictionClassHeavy = setRoomType != 1 ? Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "class_heavy", setRoomType, class_heavy)) : 1;
     var setRestrictionClassEngineer = setRoomType != 1 ? Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "class_engineer", setRoomType, class_engineer)) : 1;
     var setRestrictionClassMedic = setRoomType != 1 ? Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "class_medic", setRoomType, class_medic)) : 1;
     var setRestrictionClassSniper = setRoomType != 1 ? Number(scriptGameroom.getGameModeRestrictionValue(missionGameModeToValidate, "class_sniper", setRoomType, class_sniper)) : 1;
 
-    var classRestrictionObject = scriptGameroom.getNewClassRestrictionObject(setRestrictionClassRifleman, setRestrictionClassSniper, setRestrictionClassMedic, setRestrictionClassEngineer);
+    var classRestrictionObject = scriptGameroom.getNewClassRestrictionObject(setRestrictionClassRifleman, setRestrictionClassHeavy, setRestrictionClassSniper, setRestrictionClassMedic, setRestrictionClassEngineer);
 
     var setRoomId = global.roomId; global.roomId++;
-
-    //var setSettingMinPlayersReady = 2;
 
     var roomObject = {
         room_id: setRoomId,
@@ -168,8 +135,9 @@ exports.module = function (stanza, isAutomaticCreation, manualRoomType, manualMi
             teams_switched: 0,
             can_start: 0,
             team_balanced: 1,
-            min_ready_players: setSettingMinPlayersReady,
-            teams_ready_players_diff: setSettingTeamsReadyPlayersDiff,
+            min_ready_players: setSettingMinPlayersReady,//setSettingMinPlayersReady
+            can_pause: 1,
+            teams_ready_players_diff: setSettingTeamsReadyPlayersDiff,//setSettingTeamsReadyPlayersDiff
             players: [],
             team_colors: [
                 { id: 1, color: 4294907157 },
@@ -180,7 +148,7 @@ exports.module = function (stanza, isAutomaticCreation, manualRoomType, manualMi
             synchronized_revision: 1
         },
         room_master: {
-            master: (setRoomType == 1 || setRoomType == 2 || setRoomType == 4) ? profileObject._id : 0,
+            master: profileObject._id,
             revision: 1,
             synchronized_revision: 1
         },
@@ -188,9 +156,14 @@ exports.module = function (stanza, isAutomaticCreation, manualRoomType, manualMi
             auto_start_timeout_end: 0,
             auto_start_timeout: 0,
             can_manual_start: 0,
-            joined_intermission_timeout: 10,
-            intermission_timeout_sec: 30,
-            post_session_timeout_sec: 60,
+            joined_intermission_timeout: setSettingAutostartJoinedIntermissionTimeoutSec,
+            intermission_timeout_sec: setSettingAutostartIntermissionTimeoutSec,
+            post_session_timeout_sec: setSettingAutostartPostSessionTimeoutSec,
+            revision: 1,
+            synchronized_revision: 1
+        },
+        regions: {
+            region_id: profileObject.region_id,
             revision: 1,
             synchronized_revision: 1
         },
@@ -217,15 +190,20 @@ exports.module = function (stanza, isAutomaticCreation, manualRoomType, manualMi
             mission_key: missionInfo.attrs.uid,
             time_of_day: missionInfo.attrs.time_of_day,
             difficulty: (missionInfo.attrs.difficulty ? missionInfo.attrs.difficulty : "normal"),
-            type: (missionInfo.attrs.mission_type ? missionInfo.attrs.mission_type : null),
+            type: (missionInfo.attrs.mission_type ? missionInfo.attrs.mission_type : ""),
             objective_info: scriptGameroom.getMissionObjectivesObject(missionInfo),
             crown_info: scriptGameroom.getCrownRewardsAndThresholdsObject(missionInfo),
             revision: 1,
             synchronized_revision: 1
         },
         clan_war: {
-            clan_1: !isAutomaticCreation ? profileObject.clan_name : "",
+            clan_1: profileObject.clan_name,
             clan_2: "",
+            revision: 1,
+            synchronized_revision: 1
+        },
+        voice_chat: {
+            enabled: (setRoomType == 32 || ((setRoomType == 1 || setRoomType == 16) && (missionInfo.attrs.mission_type != "trainingmission" && missionInfo.attrs.mission_type != "easymission" && missionInfo.attrs.mission_type != "normalmission" && missionInfo.attrs.mission_type != "hardmission"))) ? 1 : 0,
             revision: 1,
             synchronized_revision: 1
         },
@@ -233,11 +211,14 @@ exports.module = function (stanza, isAutomaticCreation, manualRoomType, manualMi
             friendly_fire: setRestrictionFriendlyFire,
             enemy_outlines: setRestrictionEnemyOutlines,
             auto_team_balance: setRestrictionAutoTeamBalance,
-            dead_can_chat: setRestrictionDeadCanChat,
             join_in_the_process: setRestrictionJoinInTheProcess,
             max_players: setRestrictionMaxPlayers,
             round_limit: setRestrictionRoundLimit,
+            preround_time: setRestrictionPreroundTime,
             inventory_slot: setRestrictionInventorySlot,
+            locked_spectator_camera: setRestrictionLockedSpectatorCamera,
+            high_latency_autokick: setRestrictionHighLatencyAutokick,
+            overtime_mode: setRestrictionOvertimeMode,
             class_restriction: classRestrictionObject.setFlag,
             class_restriction_arr: classRestrictionObject.setArr,
             revision: 1,
@@ -250,8 +231,7 @@ exports.module = function (stanza, isAutomaticCreation, manualRoomType, manualMi
             revision: 1,
             synchronized_revision: 1
         },
-        regions: {
-            region_id: !isAutomaticCreation ? profileObject.region_id : "global",
+        ingame_chat: {
             revision: 1,
             synchronized_revision: 1
         },
@@ -262,64 +242,47 @@ exports.module = function (stanza, isAutomaticCreation, manualRoomType, manualMi
         missionBase64: Buffer.from(String(missionInfo)).toString('base64')
     }
 
-    if (!isAutomaticCreation) {
+    var setMissionAccessTokens = scriptGameroom.getNewPlayerMissionAccessTokens(profileObject.items);
 
-        var setMissionAccessTokens = scriptGameroom.getNewPlayerMissionAccessTokens(profileObject.items);
+    var setTeamId = scriptGameroom.getNewPlayerTeamId(roomObject, profileObject.clan_name);
+    var setStatus = scriptGameroom.getNewPlayerStatus(roomObject, profileObject.missions_unlocked, profileObject.classes_unlocked, setMissionAccessTokens);
+    var setClassId = scriptGameroom.getNewPlayerClassId(roomObject, profileObject.current_class, profileObject.classes_unlocked);
 
-        var setTeamId = scriptGameroom.getNewPlayerTeamId(roomObject, profileObject.clan_name);
-        var setStatus = scriptGameroom.getNewPlayerStatus(roomObject, profileObject.missions_unlocked, profileObject.classes_unlocked, setMissionAccessTokens);
-        var setClassId = scriptGameroom.getNewPlayerClassId(roomObject, profileObject.current_class, profileObject.classes_unlocked);
+    var playerObject = {
+        profile_id: profileObject._id,
+        online_id: stanza.attrs.from,
+        nickname: profileObject.nick,
+        clanName: profileObject.clan_name,
+        experience: profileObject.experience,
+        rank: scriptTools.getLevelByExp(profileObject.experience),
+        banner_badge: profileObject.banner_badge,
+        banner_mark: profileObject.banner_mark,
+        banner_stripe: profileObject.banner_stripe,
+        team_id: setTeamId,
+        status: setStatus,
+        skill: 0.000,
+        presence: profileObject.status,
+        class_id: setClassId,
+        observer: 0,
+        region_id: profileObject.region_id,
+        missions_unlocked: profileObject.missions_unlocked.slice(0),
+        classes_unlocked: profileObject.classes_unlocked.slice(0),
+        mission_access_tokens: setMissionAccessTokens,
+        is_reserved: false
+    };
 
-        var playerObject = {
-            profile_id: profileObject._id,
-            online_id: stanza.attrs.from,
-            nickname: profileObject.nick,
-            clanName: profileObject.clan_name,
-            experience: profileObject.experience,
-            banner_badge: profileObject.banner_badge,
-            banner_mark: profileObject.banner_mark,
-            banner_stripe: profileObject.banner_stripe,
-            team_id: setTeamId,
-            group_id: "",
-            region_id: profileObject.region_id,
-            status: setStatus,
-            presence: profileObject.status,
-            class_id: setClassId,
-            observer: 0,
-            skill: "1.000",
-            missions_unlocked: profileObject.missions_unlocked.slice(0),
-            classes_unlocked: profileObject.classes_unlocked.slice(0),
-            mission_access_tokens: setMissionAccessTokens
-        };
+    roomObject.core.players.push(playerObject);
 
-        roomObject.core.players.push(playerObject);
-
-        profileObject.room_object = roomObject;
-        profileObject.room_player_object = playerObject;
-
-    }
+    profileObject.room_object = roomObject;
+    profileObject.room_player_object = playerObject;
 
     roomObject.core.can_start = scriptGameroom.getCanStart(roomObject);
 
     global.gamerooms.push(roomObject);
 
-    if (!isAutomaticCreation) {
-
-        var elementGameroomOpen = new ltxElement("gameroom_open");
-        elementGameroomOpen.children.push(scriptGameroom.getClientLtx(roomObject, true));
-        global.xmppClient.response(stanza, elementGameroomOpen);
-
-        /*
-        if (roomObject.room_type == 1) {
-            setTimeout(global.xmppClient.request, 3000, stanza.attrs.from, new ltxElement("admin_cmd", { command: "Инфо", result: "Оригинальная логика ботов не сохранилась, но она была написана с нуля, поэтому она может отличатся" }));
-        }
-        */
-
-    }
-
-    if (isAutomaticCreation) {
-        return roomObject;
-    }
+    var elementGameroomOpen = new ltxElement("gameroom_open");
+    elementGameroomOpen.children.push(scriptGameroom.getClientLtx(roomObject, true));
+    global.xmppClient.response(stanza, elementGameroomOpen);
 }
 
 //1-Миссия недоступна

@@ -8,14 +8,8 @@ var db;
 function loadDb() {
 	db = {};
 	console.log("[MongoDb]:Connecting...");
-
-	var mongoConnectionAttrs = { useNewUrlParser: true, useUnifiedTopology: true};
-
-	if(require("mongodb/lib/connection_string.js").OPTIONS.reconnectTries){
-		mongoConnectionAttrs.reconnectTries = Number.MAX_VALUE;
-	}
-
-	mongoClient.connect(config.mongodb, mongoConnectionAttrs, function (err, dbClient) {
+	//reconnectTries: Number.MAX_VALUE
+	mongoClient.connect(config.mongodb, { useNewUrlParser: true, useUnifiedTopology: true }, function (err, dbClient) {
 		if (dbClient != null) {
 			//console.log("[MongoDb]:Connected");
 			db.warface = {};
@@ -39,7 +33,7 @@ function loadXmppConnection() {
 
 	xmppComponent.on('stanza', function (stanza) {
 		//console.log('[Component]:Stanza')
-		//console.log(stanza+"")
+
 		switch (stanza.attrs.type) {
 			case 'get':
 				switch (stanza.name) {
@@ -55,38 +49,40 @@ function loadXmppConnection() {
 														switch (stanza.children[0].children[0].name) {
 															case "message":
 
-																db.warface.profiles.findOne({ username: stanza.attrs.from.split("@")[0] }, { projection: { "nick": 1 } }, function (errProfileSender, resultProfileSender) {
+																db.warface.profiles.findOne({ username: stanza.attrs.from.split("@")[0] }, { projection: { "mute": 1 } }, function (errProfile, resultProfile) {
 
-																	if (errProfileSender) {
-																		console.log("[" + stanza.attrs.from + "][Message]:Failed to getting sender data from the database");
+																	if (errProfile) {
+																		//console.log("[" + stanza.attrs.from + "][Message]:Failed to getting data from the database");
 																		return;
 																	}
 
-																	if (!resultProfileSender) {
-																		console.log("[" + stanza.attrs.from + "][Message]:Sender profile not found");
+																	if (!resultProfile) {
+																		//console.log("[" + stanza.attrs.from + "][Message]:Sender profile not found");
 																		return;
 																	}
 
-																	db.warface.profiles.findOne({ nick: stanza.children[0].children[0].attrs.nick }, { projection: { "username": 1 } }, function (errProfile, resultProfile) {
+																	if (resultProfile.mute.time > Math.round(new Date().getTime() / 1000)) {
+																		//console.log("[" + stanza.attrs.from + "][Message]:Sender profile in muted");
+																		return;
+																	}
 
-																		if (errProfile) {
-																			console.log("[" + stanza.attrs.from + "][Message]:Failed to getting target data from the database");
+																	db.warface.profiles.findOne({ nick: stanza.children[0].children[0].attrs.nick }, { projection: { "username": 1 } }, function (errProfile1, resultProfile1) {
+
+																		if (errProfile1) {
+																			//console.log("[" + stanza.attrs.from + "][Message]:Failed to getting data 1 from the database");
 																			return;
 																		}
 
-																		if (!resultProfile) {
+																		if (!resultProfile1) {
 																			//console.log("[" + stanza.attrs.from + "][Message]:Target profile not found");
 																			return;
 																		}
 
-																		stanza.children[0].children[0].attrs.from = resultProfileSender.nick;
-																		stanza.attrs.to = resultProfile.username + "@warface/GameClient";
+																		stanza.attrs.to = resultProfile1.username + "@warface/GameClient";
 																		xmppComponent.send(stanza);
 
 																	});
-
 																});
-
 																break;
 														}
 

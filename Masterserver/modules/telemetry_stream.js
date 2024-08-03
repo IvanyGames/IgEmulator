@@ -1,28 +1,27 @@
-var ltx = require('ltx')
-var fs = require('fs')
-var scriptTools = require('../scripts/tools.js')
-
-var telemetryClassesArr = ["Rifleman", "Heavy", "Recon", "Medic", "Engineer"];
+const ltx = require('ltx')
+//const fs = require('fs')
 
 exports.module = function (stanza) {
 
-	var username = stanza.attrs.from.split("@")[0];
+    var username = stanza.attrs.from.split("@")[0];
 
-	if (username != "dedicated") {
-		return;
-	}
+    if (username != "dedicated") {
+        return;
+    }
 
 	var telem_recvd = ltx.parse(String(stanza).split("&lt;").join("<").split("&gt;").join(">").split(">\n").join(">").split(">    <").join("><").split(">   <").join("><").split(">  <").join("><").split("> <").join("><").split("><").join("><"));//Замена знаков
-
+	
 	var cur_telemetry = telem_recvd.children[0].children[0];//Указатель на текущий telemetry_stream
-
+	
+	//fs.appendFileSync("./sessions_telemetry_orig/"+cur_telemetry.attrs.session_id+".xml", String(stanza.children[0].children[0]))	
+	
+	//Проверка существует ли информация о сессии,если нет то создать
 	if (global.sessions_data[cur_telemetry.attrs.session_id] == null) {
 		global.sessions_data[cur_telemetry.attrs.session_id] = new ltx.Element("telemetry_stream");
 		global.sessions_data[cur_telemetry.attrs.session_id].c("rounds");
 		global.sessions_data[cur_telemetry.attrs.session_id].c("teams");
 		global.sessions_data[cur_telemetry.attrs.session_id].c("players");
 	}
-
 	var cur_session_data = global.sessions_data[cur_telemetry.attrs.session_id];
 
 	////console.log(cur_session_data);
@@ -108,8 +107,8 @@ exports.module = function (stanza) {
 			}
 		}
 	}
-
 	if (cur_telemetry.attrs.finalize == "1") {
+		//fs.writeFileSync("./sessions_telemetry/"+cur_telemetry.attrs.session_id+".xml", String(cur_session_data))
 		calculate_session_stats(cur_session_data, cur_telemetry.attrs.session_id);
 	}
 	////console.timeEnd("parse");
@@ -249,10 +248,10 @@ function calculate_session_stats(telemetry, session_id) {
 	}
 
 	var profiles_lst = [];
-
-	for (var i = 0; i < profiles_ids_arr.length; i++) {
+	
+	for(var i = 0; i < profiles_ids_arr.length; i++){
 		var profileObject = global.users._id[profiles_ids_arr[i]];
-		if (profileObject) {
+		if(profileObject){
 			profiles_lst.push(profileObject);
 		}
 	}
@@ -266,7 +265,7 @@ function calculate_session_stats(telemetry, session_id) {
 			if (stats_session_timeline_disconnect.children[cur_val].name == "val") {
 				var cur_params = stats_session_timeline_disconnect.children[cur_val].getChild("param").attrs;
 
-				if (cur_params.cause != "session_ended" && cur_params.cause != "11") {
+				if (cur_params.cause != "session_ended") {
 					disconnected_players[cur_params.profile_id] = Number(stats_session_timeline_disconnect.children[cur_val].attrs.time);
 					if (cur_params.cause == "kicked") {
 						inc_stat_Value_by_attrs(profiles_lst, Number(cur_params.profile_id), { mode: stats_session.attrs.gamemode, stat: 'player_sessions_kicked' }, 1);
@@ -284,11 +283,6 @@ function calculate_session_stats(telemetry, session_id) {
 	var win_lose_draw_data = {};
 	for (cur_profile in players.children) {
 		var cur_player = players.children[cur_profile];
-
-		if(cur_player.name != "player"){
-			continue;
-		}
-
 		//Пропуск если текущие данные были до последнего disconnect игрока
 		if (disconnected_players[cur_player.attrs.profile_id] != null && disconnected_players[cur_player.attrs.profile_id] > Number(cur_player.attrs.lifetime_begin)) {
 			continue;
@@ -318,7 +312,7 @@ function calculate_session_stats(telemetry, session_id) {
 			for (cur_val in timeline_kill.children) {
 				if (timeline_kill.children[cur_val].name == "val") {
 					var cur_params = timeline_kill.children[cur_val].getChild("param").attrs;
-					if (cur_params.friendly_fire != "1") {
+					if (cur_params.friendly_fire == "0") {
 						if (cur_params.is_player == "1") {
 							player_kills++;
 						} else {
@@ -445,9 +439,6 @@ function calculate_session_stats(telemetry, session_id) {
 				}
 			}
 		}
-
-		var weaponSumUsageArr = [];
-
 		//Подсчёт времени использования оружия
 		var timeline_weapon = get_timeline_by_name(timelines, "weapon");
 		if (timeline_weapon != null) {
@@ -457,15 +448,6 @@ function calculate_session_stats(telemetry, session_id) {
 					var cur_params = timeline_weapon.children[cur_val].attrs;
 					if (last_weapon != null) {
 						//console.log("TestSt1 name:"+last_weapon.name+" inc:"+Math.round((Number(cur_params.time)-last_weapon.time)/1000) );
-
-						var weaponSumUsageIndex = weaponSumUsageArr.findIndex(function (x) { return x[0] == last_weapon.name });
-
-						if (weaponSumUsageIndex == -1) {
-							weaponSumUsageArr.push([last_weapon.name, Math.round((Number(cur_params.time) - last_weapon.time) / 1000)]);
-						} else {
-							weaponSumUsageArr[weaponSumUsageIndex][1] += Math.round((Number(cur_params.time) - last_weapon.time) / 1000);
-						}
-
 						inc_wpn_usage(profiles_lst, Number(cur_player.attrs.profile_id), last_weapon.name, Math.round((Number(cur_params.time) - last_weapon.time) / 1000), cur_player.attrs.character_class);
 					}
 
@@ -474,104 +456,35 @@ function calculate_session_stats(telemetry, session_id) {
 			}
 			if (last_weapon != null) {
 				//console.log("TestSt1 name:"+last_weapon.name+" inc:"+Math.round((Number(cur_params.time)-last_weapon.time)/1000) );
-
-				var weaponSumUsageIndex = weaponSumUsageArr.findIndex(function (x) { return x[0] == last_weapon.name });
-
-				if (weaponSumUsageIndex == -1) {
-					weaponSumUsageArr.push([last_weapon.name, Math.round((Number(cur_params.time) - last_weapon.time) / 1000)]);
-				} else {
-					weaponSumUsageArr[weaponSumUsageIndex][1] += Math.round((Number(cur_params.time) - last_weapon.time) / 1000);
-				}
-
 				inc_wpn_usage(profiles_lst, Number(cur_player.attrs.profile_id), last_weapon.name, Math.round((Number(cur_params.time) - last_weapon.time) / 1000), cur_player.attrs.character_class);
 			}
 		}
-
-		//console.log(weaponSumUsageArr);
-		/*
-		if (weaponSumUsageArr.length) {
-
-			var profileObject = global.users._id[cur_player.attrs.profile_id];
-
-			if (profileObject) {
-
-				for (var e = 0; e < profileObject.items.length; e++) {
-
-					var itemObject = profileObject.items[e];
-
-					if (!itemObject.durability_points || !itemObject.slot) {
-						continue;
-					}
-
-					var itemSlotArr = scriptTools.getItemSlotArr(itemObject.slot);
-
-					if (itemSlotArr[telemetryClassesArr[cur_player.attrs.character_class]] == 0) {
-						continue;
-					}
-
-					var weaponSumUsageInfo = weaponSumUsageArr[weaponSumUsageArr.findIndex(function (x) { return x[0] == itemObject.name })];
-
-					if (!weaponSumUsageInfo) {
-						continue;
-					}
-
-					var sumTime = weaponSumUsageInfo[1];
-
-					if (!sumTime) {
-						continue;
-					}
-
-					//console.log("WeapponDurability name:" + itemObject.name + " sum:" + sumTime);
-
-					var gameItemObject = global.resources.items.data[global.resources.items.data.findIndex(function (x) { return x.name == itemObject.name; })];
-
-					if (!gameItemObject || !gameItemObject.repair_cost) {
-						//console.log("[" + stanza.attrs.from + "][ClassPresence]:Item '" + itemObject.name + " not found in game items or not have repair_cost");
-						continue;
-					}
-
-					itemObject.durability_points -= sumTime;
-
-					if (itemObject.durability_points < 0) {
-						itemObject.durability_points = 0;
-					}
-
-					var newRepairCost = Math.ceil(((gameItemObject.repair_cost) / 100) * (100 - (100 / (itemObject.total_durability_points / itemObject.durability_points))));
-
-					if (newRepairCost > 0) {
-						itemObject.repair_cost = newRepairCost;
-					}
-
-				}
-			}
-		}
-		*/
-		
 		//Подсчёт времени игры за текущий клас класс
 		var play_time = Math.round((Number(cur_player.attrs.lifetime_end) - Number(cur_player.attrs.lifetime_begin)) / 100);
 		inc_stat_Value_by_attrs(profiles_lst, Number(cur_player.attrs.profile_id), { class: cur_player.attrs.character_class, mode: stats_session.attrs.gamemode, stat: 'player_playtime' }, play_time);
-		inc_stat_Value_by_attrs(profiles_lst, Number(cur_player.attrs.profile_id), { stat: 'player_online_time' }, play_time);
+
 
 	}
 	//Обновление статистики побед/поражений для игроков
+	
 	//console.log(stats_session.attrs.mission_type);
 	for (cur_pl in win_lose_draw_data) {
 		if (win_lose_draw_data[cur_pl] == 0) {
 			var sObj = { mode: stats_session.attrs.gamemode, stat: 'player_sessions_draw' };
-			if (stats_session.attrs.gamemode == "PVE") {
-				sObj.difficulty = stats_session.attrs.difficulty;
+			if(stats_session.attrs.gamemode == "PVE"){
+				sObj.difficulty = stats_session.attrs.mission_type;
 			}
 			inc_stat_Value_by_attrs(profiles_lst, Number(cur_pl), sObj, 1);
 		} else if (win_lose_draw_data[cur_pl] == 1) {
 			var sObj = { mode: stats_session.attrs.gamemode, stat: 'player_sessions_won' };
-			if (stats_session.attrs.gamemode == "PVE") {
-				sObj.difficulty = stats_session.attrs.difficulty;
+			if(stats_session.attrs.gamemode == "PVE"){
+				sObj.difficulty = stats_session.attrs.mission_type;
 			}
 			inc_stat_Value_by_attrs(profiles_lst, Number(cur_pl), sObj, 1);
 		} else if (win_lose_draw_data[cur_pl] == 2) {
 			var sObj = { mode: stats_session.attrs.gamemode, stat: 'player_sessions_lost' };
-			if (stats_session.attrs.gamemode == "PVE") {
-				sObj.difficulty = stats_session.attrs.difficulty;
+			if(stats_session.attrs.gamemode == "PVE"){
+				sObj.difficulty = stats_session.attrs.mission_type;
 			}
 			inc_stat_Value_by_attrs(profiles_lst, Number(cur_pl), sObj, 1);
 		}

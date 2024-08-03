@@ -2,8 +2,7 @@ var ltxElement = require('ltx').Element
 
 var scriptClan = require('../scripts/clan.js')
 
-var RegExpNameRU = new RegExp("[^-.0-9_А-ЯЁа-яё]");
-var RegExpNameEN = new RegExp("[^-.0-9_A-Za-z]");
+var RegExpClanName = new RegExp("[^-.0-9_А-ЯЁа-яё]");
 
 exports.module = function (stanza) {
 
@@ -18,7 +17,7 @@ exports.module = function (stanza) {
 	var clan_name = stanza.children[0].children[0].attrs.clan_name;
 	var description = base64ToString(stanza.children[0].children[0].attrs.description);
 
-	if (!clan_name || clan_name.length < 4 || clan_name.length > 16 || (RegExpNameRU.test(clan_name) && RegExpNameEN.test(clan_name))) {
+	if (!clan_name || clan_name.length < 4 || clan_name.length > 16 || RegExpClanName.test(clan_name)) {
 		//console.log("[" + stanza.attrs.from + "][ClanCreate]:Incorrect name");
 		global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "2" });
 		return;
@@ -112,22 +111,15 @@ exports.module = function (stanza) {
 
 				scriptClan.getClanInfo(clan_name, function (elementClanInfo) {
 
-					global.xmppClient.response(stanza, new ltxElement("clan_create", {description:description, clan_name:clan_name}));
-
-					if (elementClanInfo) {
-						global.xmppClient.request(stanza.attrs.from, elementClanInfo)
-					}
-
-					/*
 					if (!elementClanInfo) {
 						//console.log("[" + stanza.attrs.from + "][ClanCreate]:Failed to get clan");
 					}
 
 					//console.log("[" + stanza.attrs.from + "][ClanCreate]:Ok");
 					profileObject.clan_name = clan_name;
-
+					
 					var roomObject = profileObject.room_object;
-
+					
 					if (roomObject) {
 						var playerObject = profileObject.room_player_object;
 						playerObject.clanName = clan_name;
@@ -135,7 +127,7 @@ exports.module = function (stanza) {
 					}
 					elementClanInfo.name = "clan_create";
 					global.xmppClient.response(stanza, elementClanInfo);
-					*/
+
 				});
 
 			});

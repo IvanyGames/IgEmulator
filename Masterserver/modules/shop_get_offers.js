@@ -1,6 +1,6 @@
 var ltxElement = require('ltx').Element
 
-exports.moduleNew = function (stanza) {
+exports.module = function (stanza) {
 
 	var from = Number(stanza.children[0].children[0].attrs.from);
 	var to = Number(stanza.children[0].children[0].attrs.to);
@@ -35,51 +35,7 @@ exports.moduleNew = function (stanza) {
 
 	}
 
-	global.xmppClient.response(stanza, elementShopGetOffers);
-}
-
-exports.moduleOld = function (stanza) {
-
-	var received = Number(stanza.children[0].children[0].attrs.received);
-	var token = stanza.children[0].children[0].attrs.token;
-	var cancelled = stanza.children[0].children[0].attrs.cancelled;
-	var hash = Number(stanza.children[0].children[0].attrs.hash);
-	var size = Number(stanza.children[0].children[0].attrs.size);
-
-	if (Number.isNaN(received) || received < 0 || Number.isNaN(size) || size < 0) {
-		//console.log("["+stanza.attrs.from+"][ShopGetOffers]:Incorrect attributes");
-		global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "2" });
-		return;
-	}
-
-	var elementShopGetOffers = new ltxElement("shop_get_offers", { left: 0, token: 0 });
-
-	if (hash != global.cache.shop.hashOld) {
-
-		var end_i = received + size;
-
-		if (end_i >= global.cache.shop.data.length) {
-			end_i = global.cache.shop.data.length;
-		}
-
-		elementShopGetOffers.attrs.left = global.cache.shop.data.length - end_i;
-
-		for (var i = received; i < end_i; i++) {
-			var offerInfo = global.cache.shop.data[i];
-			elementShopGetOffers.c("offer", offerInfo);
-		}
-
-	}
+	//console.log("[" + stanza.attrs.from + "][ShopGetOffers]:Successfully");
 
 	global.xmppClient.response(stanza, elementShopGetOffers);
-}
-
-exports.module = function (stanza) {
-
-	if (stanza.children[0].children[0].attrs.size) {
-		exports.moduleOld(stanza);
-		return;
-	}
-
-	exports.moduleNew(stanza);
 }

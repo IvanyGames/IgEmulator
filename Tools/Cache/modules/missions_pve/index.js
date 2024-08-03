@@ -34,7 +34,7 @@ exports.module = function (callback) {
 
     console.log("[CacheMissionsPvE]:Loading SubMissionConfigs...");
     var generatorSublevelsConfigs = {};
-    var missionsConfigsPaths = getFiles("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.version + "/levels");
+    var missionsConfigsPaths = getFiles("./modules/missions_pve/gamedata/levels");
     for (i = 0; i < missionsConfigsPaths.length; i++) {
         var missionConfigPath = missionsConfigsPaths[i].toLowerCase();
         if (missionConfigPath.split("/")[missionConfigPath.split("/").length - 1] == "submissionconfig.xml") {
@@ -44,7 +44,7 @@ exports.module = function (callback) {
 
     var generatorMissionGraphs = {};
 
-    var missions_graphs_paths = getFiles("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.version + "/libs/missiongraphs");
+    var missions_graphs_paths = getFiles("./modules/missions_pve/gamedata/libs/missiongraphs");
     for (i = 0; i < missions_graphs_paths.length; i++) {
         var parsedMg = ltx.parse(fs.readFileSync(missions_graphs_paths[i]));
         generatorMissionGraphs[parsedMg.attrs.name.toLowerCase()] = parsedMg;
@@ -52,10 +52,10 @@ exports.module = function (callback) {
     //console.log(generatorMissionGraphs);
     //Конфиг генератора миссий
     console.log("[CacheMissionsPvE]:Loading MissionGenerationConfiguration...");
-    var generatorMissionGenerationConfiguration = ltx.parse(fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.version + "/libs/config/masterserver/mission_generation_configuration.xml", "utf8"));
+    var generatorMissionGenerationConfiguration = ltx.parse(fs.readFileSync("./modules/missions_pve/gamedata/libs/config/masterserver/mission_generation_configuration.xml", "utf8"));
 
     console.log("[CacheMissionsPvE]:Loading SecondaryObjectivesDesc...");
-    global.SecondaryObjectivesDesc = ltx.parse(fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.version + "/libs/config/secondaryobjectivesdesc.xml", "utf8"));
+    global.SecondaryObjectivesDesc = ltx.parse(fs.readFileSync("./modules/missions_pve/gamedata/libs/config/secondaryobjectivesdesc.xml", "utf8"));
 
     function getRandomInt(min, max) {
         return Math.floor(Math.random() * (max - min)) + min;
@@ -69,11 +69,6 @@ exports.module = function (callback) {
     }
 
     function generate_one_mission(mission_data) {
-
-        if (!mission_data.attrs.difficulty) {
-            mission_data.attrs.difficulty = mission_data.name;
-        }
-
         var return_missions = [];
         var LevelGraph_c = mission_data.getChild("LevelGraph").getChildren("Value");
         var Tod_c = mission_data.getChild("TimeOfDay");
@@ -98,7 +93,7 @@ exports.module = function (callback) {
                     //console.log(cur_MissionGraph);
 
 
-                    var res_missions_xml = new ltx.Element("mission", { name: cur_MissionGraph.attrs.display_name.split(",")[getRandomInt(0, cur_MissionGraph.attrs.display_name.split(",").length)], time_of_day: Tod_c.getChild("Value").getText(), game_mode: "pve", game_mode_cfg: "pve_mode.cfg", uid: uuidv4(), release_mission: "1", clan_war_mission: "0", only_clan_war_mission: "0", difficulty: mission_data.attrs.difficulty, mission_type: (mission_data.name != mission_data.attrs.difficulty ? mission_data.name : null) });
+                    var res_missions_xml = new ltx.Element("mission", { name: cur_MissionGraph.attrs.display_name.split(",")[getRandomInt(0, cur_MissionGraph.attrs.display_name.split(",").length)], time_of_day: Tod_c.getChild("Value").getText(), game_mode: "pve", game_mode_cfg: "pve_mode.cfg", uid: uuidv4(), release_mission: "1", clan_war_mission: "0", only_clan_war_mission: "0", difficulty: mission_data.attrs.difficulty, mission_type: mission_data.name });
                     res_missions_xml.c("Basemap", { name: cur_MissionGraph.attrs.setting });
                     res_missions_xml.children.push(cur_MissionGraph.getChild("UI"));
                     var Sublevels_c = res_missions_xml.c("Sublevels");
@@ -266,11 +261,6 @@ exports.module = function (callback) {
             var nca = generatorMissionGenerationConfiguration.getChild(Settings_c[mtcount].attrs.propagate_on_expire);
 
             if (nca != null) {
-
-                if (!nca.attrs.difficulty) {
-                    nca.attrs.difficulty = nca.name;
-                }
-
                 Settings_c[mtcount].attrs.propagate_on_expire = nca.attrs.propagate_on_expire;
                 Settings_c[mtcount].name = nca.name;
                 Settings_c[mtcount].attrs.difficulty = nca.attrs.difficulty;
@@ -285,7 +275,7 @@ exports.module = function (callback) {
                 }
 
             } else {
-                throw "Ошибка-> тип:" + Settings_c[mtcount].attrs.propagate_on_expire + " не найден";
+                log.error("Ошибка-> тип:" + Settings_c[mtcount].attrs.propagate_on_expire + " не найден");
             }
         } else {
             mtcount++;

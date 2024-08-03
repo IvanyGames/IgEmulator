@@ -1,10 +1,7 @@
-var Element = require('./element.js');
-var moduleStanza = require('./stanza');
+const Element = require('ltx').Element;
+const moduleStanza = require('../stanza');
 
 global.masterserversArr = [];
-global.quickplayObjectsArr = [];
-
-var componentQueryId = 1;
 
 exports.module = function (connection, stanza) {
 	switch (stanza.attrs.type) {
@@ -53,9 +50,6 @@ exports.module = function (connection, stanza) {
 														case "broadcast_session_result":
 															handlerQueryBroadcastSessionResult(connection, stanza);
 															break;
-														case "brodcast_session_result":
-															handlerQueryBroadcastSessionResult(connection, stanza);
-															break;
 														case "data":
 															handlerQueryData(connection, stanza);
 															break;
@@ -68,11 +62,8 @@ exports.module = function (connection, stanza) {
 														case "xmpp_kick":
 															handlerXmppKick(connection, stanza);
 															break;
-														case "gameroom_quickplay_backend":
-															handlerGameroomQuickplayBackend(connection, stanza);
-															break;
-														case "gameroom_quickplay_cancel_backend":
-															handlerGameroomQuickplayCancelBackend(connection, stanza);
+														case "check_nickname":
+															handlerCheckNickname(connection, stanza);
 															break;
 													}
 												}
@@ -111,7 +102,7 @@ function handlerQueryAccount(connection, stanza) {
 	var login = stanza.children[0].children[0].attrs.login;
 	var password = stanza.children[0].children[0].attrs.password;
 
-	if (login != connection.username || password != connection.version + "~" + connection.password) {
+	if (login != connection.username || password != connection.password) {
 		var elementIq = new Element('iq', { "from": stanza.attrs.to, "to": stanza.attrs.from, "id": stanza.attrs.id, type: 'result' });
 		elementIq.c('query', { xmlns: 'urn:cryonline:k01' }).c(stanza.children[0].children[0].name, stanza.children[0].children[0].attrs);
 		elementIq.c('error', { type: 'continue', code: "8", custom_code: "1" }).c('internal-server-error', { xmlns: 'urn:ietf:params:xml:ns:xmpp-stanzas' }).up().c('text', { xmlns: 'urn:ietf:params:xml:ns:xmpp-stanzas', "xml:lang": 'en' }).t('Custom query error');
@@ -127,12 +118,7 @@ function handlerQueryAccount(connection, stanza) {
 
 
 	for (var i = 0; i < global.masterserversArr.length; i++) {
-
 		var masterserverInfo = global.masterserversArr[i].info;
-
-		if (connection.version && connection.version != masterserverInfo.version) {
-			continue;
-		}
 
 		var elementServer = elementMasterservers.c("server", masterserverInfo);
 		var elementLoadStats = elementServer.c("load_stats");
@@ -164,13 +150,7 @@ function handlerQueryGetMasterServer(connection, stanza) {
 	//Поиск каналов подходящих по типу которые ещё не использовались
 	var rank_is_nan = Number.isNaN(rank);
 	for (var i = 0; i < global.masterserversArr.length; i++) {
-
 		var masterserverInfo = global.masterserversArr[i].info;
-
-		if (connection.version && connection.version != masterserverInfo.version) {
-			continue;
-		}
-
 		if (usedResourcesArr == null || usedResourcesArr.indexOf(masterserverInfo.resource) == -1) {
 			if (masterserverInfo.channel == channel) {
 				validMasterserversChannel.push(masterserverInfo.resource);
@@ -213,12 +193,7 @@ function handlerQueryGetMasterServers(connection, stanza) {
 
 
 	for (var i = 0; i < global.masterserversArr.length; i++) {
-
 		var masterserverInfo = global.masterserversArr[i].info;
-
-		if (connection.version && connection.version != masterserverInfo.version) {
-			continue;
-		}
 
 		var elementServer = elementMasterservers.c("server", masterserverInfo);
 		var elementLoadStats = elementServer.c("load_stats");
@@ -249,26 +224,12 @@ function handlerQuerySwitchChannel(connection, stanza) {
 }
 
 function handlerQueryPlayerStatus(connection, stanza) {
-
-	if (stanza.children[0].children[0].attrs.to) {
-		stanza.attrs.to = "masterserver@" + connection.host + "/" + stanza.children[0].children[0].attrs.to;
-		delete stanza.children[0].children[0].attrs.to;
-		moduleStanza.module(connection, stanza);
-	} else {
-		for (var jid in global.connectionsOnline) {
-
-			var connectionOnline = global.connectionsOnline[jid];
-
-			if (connectionOnline.isOnline == true && connectionOnline.username == "masterserver") {
-				stanza.attrs.to = jid;
-				moduleStanza.module(connection, stanza);
-			}
-		}
-	}
-
+	stanza.attrs.to = "masterserver@" + connection.host + "/" + stanza.children[0].children[0].attrs.to;
+	delete stanza.children[0].children[0].attrs.to;
 	var elementIq = new Element('iq', { "from": stanza.attrs.to, "to": stanza.attrs.from, "id": stanza.attrs.id, type: 'result' });
-	elementIq.c('query', { xmlns: 'urn:cryonline:k01' });
+	var elementQuery = elementIq.c('query', { xmlns: 'urn:cryonline:k01' });
 	connection.send(String(elementIq));
+	moduleStanza.module(connection, stanza);
 }
 
 var masterserverDeleteTimeout = 60000;
@@ -276,7 +237,7 @@ function handlerQuerySetMasterserver(connection, stanza) {
 	var username = stanza.attrs.from.split("@")[0];
 	if (username == "masterserver") {
 		var msAttrs = stanza.children[0].children[0].attrs;
-		var msInfoJson = { resource: msAttrs.resource, server_id: Number(msAttrs.server_id), channel: msAttrs.channel, rank_group: msAttrs.rank_group, load: Number(msAttrs.load), online: Number(msAttrs.online), min_rank: Number(msAttrs.min_rank), max_rank: Number(msAttrs.max_rank), bootstrap: '', version: msAttrs.version };
+		var msInfoJson = { resource: msAttrs.resource, server_id: Number(msAttrs.server_id), channel: msAttrs.channel, rank_group: msAttrs.rank_group, load: Number(msAttrs.load), online: Number(msAttrs.online), min_rank: Number(msAttrs.min_rank), max_rank: Number(msAttrs.max_rank), bootstrap: '' };
 
 		var masterserverIndex = global.masterserversArr.findIndex(function (i) { return i.jid == stanza.attrs.from });
 		if (masterserverIndex != -1) {
@@ -345,9 +306,6 @@ function handlerQueryData(connection, stanza) {
 		case "broadcast_session_result":
 			handlerQueryBroadcastSessionResult(connection, stanza);
 			break;
-		case "brodcast_session_result":
-			handlerQueryBroadcastSessionResult(connection, stanza);
-			break;
 	}
 }
 
@@ -372,26 +330,15 @@ function handlerQueryBroadcastSync(connection, stanza) {
 }
 
 function handlerProfileInfoGetStatus(connection, stanza) {
-	var masterserversJidsArr = [];
-
-	for (var i = 0; i < global.masterserversArr.length; i++) {
-
-		if (connection.version && connection.version != global.masterserversArr[i].info.version) {
-			continue;
-		}
-
-		masterserversJidsArr.push(global.masterserversArr[i].jid);
-	}
-
-	if (masterserversJidsArr.length > 0) {
-		stanza.attrs.to = masterserversJidsArr[Math.floor(Math.random() * masterserversJidsArr.length)];
+	if (global.masterserversArr.length > 0) {
+		stanza.attrs.to = global.masterserversArr[Math.floor(Math.random() * global.masterserversArr.length)].jid;
 		moduleStanza.module(connection, stanza);
 	}
 }
 
 function handlerXmppKick(connection, stanza) {
 	if (connection.isAdmin == true) {
-		for (var jid in global.connectionsOnline) {
+		for (jid in global.connectionsOnline) {
 			var connection = global.connectionsOnline[jid];
 			if (connection.isOnline == true && connection.isAuthorized == true && connection.username == stanza.children[0].children[0].attrs.username) {
 				connection.sendEnd("");
@@ -400,70 +347,11 @@ function handlerXmppKick(connection, stanza) {
 	}
 }
 
-function handlerGameroomQuickplayBackend(connection, stanza) {
-
-	var room_type = stanza.children[0].children[0].attrs.room_type;
-	var game_mode = stanza.children[0].children[0].attrs.game_mode;
-	var mission_id = stanza.children[0].children[0].attrs.mission_id;
-	var mission_hash = stanza.children[0].children[0].attrs.mission_hash;
-	var content_hash = stanza.children[0].children[0].attrs.content_hash;
-	var timestamp = stanza.children[0].children[0].attrs.timestamp;
-	var uid = stanza.children[0].children[0].attrs.uid;
-	var username = stanza.children[0].children[0].attrs.username;
-
-	var quickplayObject = { uid: uid, room_type: room_type, game_mode: game_mode, mission_id: mission_id, username: username };
-
-	var connectionClient = global.connectionsOnline[quickplayObject.username + "@" + connection.host + "/GameClient"];
-
-	if (!connectionClient) {
-		return;
+function handlerCheckNickname(connection, stanza) {
+	if (global.masterserversArr.length > 0) {
+		stanza.attrs.to = global.masterserversArr[Math.floor(Math.random() * global.masterserversArr.length)].jid;
+		moduleStanza.module(connection, stanza);
 	}
-
-	var elementIq = new Element('iq', { "from": stanza.attrs.to, "to": connectionClient.jid, "id": componentQueryId, type: 'get' });
-	var elementQuery = elementIq.c('query', { xmlns: 'urn:cryonline:k01' });
-	elementQuery.c('gameroom_quickplay_started', { mission_hash: mission_hash, content_hash: content_hash, time_to_maps_reset_notification: "120", response_time: "0", timestamp: timestamp, uid: quickplayObject.uid });
-	connectionClient.send(String(elementIq));
-	componentQueryId++;
-
-	global.quickplayObjectsArr.push(quickplayObject);
-
-	console.log("[Quickplay] Start '" + quickplayObject.username + "'");
-}
-
-function handlerGameroomQuickplayCancelBackend(connection, stanza) {
-
-	var username = stanza.children[0].children[0].attrs.username;
-
-	var quickplayRoomIndex = -1;
-
-	for (var i = 0; i < global.quickplayObjectsArr.length; i++) {
-		if (global.quickplayObjectsArr[i].username == username) {
-			quickplayRoomIndex = i;
-			break;
-		}
-	}
-
-	var quickplayObject = global.quickplayObjectsArr[quickplayRoomIndex];
-
-	if (!quickplayObject) {
-		return;
-	}
-
-	var connectionClient = global.connectionsOnline[quickplayObject.username + "@" + connection.host + "/GameClient"];
-
-	if (!connectionClient) {
-		return;
-	}
-
-	var elementIq = new Element('iq', { "from": stanza.attrs.to, "to": connectionClient.jid, "id": componentQueryId, type: 'get' });
-	var elementQuery = elementIq.c('query', { xmlns: 'urn:cryonline:k01' });
-	elementQuery.c('gameroom_quickplay_canceled', { uid: quickplayObject.uid });
-	connectionClient.send(String(elementIq));
-	componentQueryId++;
-
-	global.quickplayObjectsArr.splice(quickplayRoomIndex, 1);
-
-	console.log("[Quickplay] Cancel '" + quickplayObject.username + "'");
 }
 
 function deleteChannel(jid) {

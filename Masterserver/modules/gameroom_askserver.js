@@ -1,7 +1,7 @@
 var ltxElement = require('ltx').Element
 var scriptGameroom = require('../scripts/gameroom.js');
 
-exports.module = function (stanza) {
+exports.module = function (stanza, countRetry) {
 
     var profileObject = global.users.jid[stanza.attrs.from];
 
@@ -10,6 +10,8 @@ exports.module = function (stanza) {
         global.xmppClient.responseError(stanza, { type: 'continue', code: "8", custom_code: "4" });
         return;
     }
+
+    var server = stanza.children[0].children[0].attrs.server;
 
     var roomObject = profileObject.room_object;
 
@@ -51,23 +53,22 @@ exports.module = function (stanza) {
         return;
     }
 
-    if (scriptGameroom.startSession(roomObject) != 0) {
-        //console.log("[" + stanza.attrs.from + "][GameroomAskServer]:Not found free dedicated server");
-        global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '6' });
+    if (!scriptGameroom.startSession(roomObject, server)) {
+
+        if (countRetry < 2) {
+            //console.log("[" + stanza.attrs.from + "][GameroomAskServer]:Not found free dedicated server");
+            global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '6' });
+            return;
+        }
+
+        countRetry--;
+
+        setTimeout(exports.module, 100, stanza, countRetry);
+
         return;
     }
-	
+
     var elementGameroom = new ltxElement("gameroom_askserver");
     elementGameroom.children.push(scriptGameroom.getClientLtx(roomObject, false));
     global.xmppClient.response(stanza, elementGameroom);
-
-	/*
-	
-    for (var i = 0; i < roomObject.core.players.length; i++) {
-        var roomPlayer = roomObject.core.players[i];
-        global.xmppClient.request(roomObject.core.players[i].online_id, new ltxElement("admin_cmd", { command: "cvar", result: "net_enable_optimized_sessions = " + cvarNetEnableOptimizedSessions }));
-		global.xmppClient.request(roomObject.core.players[i].online_id, new ltxElement("admin_cmd", { command: "cvar", result: "pl_lerpMethod = " + cvarPlLerpMethod }));
-    }
-	
-	*/
 }

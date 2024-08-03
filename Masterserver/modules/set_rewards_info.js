@@ -3,6 +3,12 @@ var scriptProfile = require('../scripts/profile.js')
 var scriptTools = require('../scripts/tools.js')
 var scriptClan = require('../scripts/clan.js')
 
+function getRandomIntInclusive(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
 exports.module = function (stanza) {
 
     var username = stanza.attrs.from.split("@")[0];
@@ -13,8 +19,7 @@ exports.module = function (stanza) {
 
     var session_id = stanza.children[0].children[0].attrs.session_id;
     var difficulty = stanza.children[0].children[0].attrs.difficulty;
-    var isPvE = Number(stanza.children[0].children[0].attrs.isPvE);
-    var isClanWar = Number(stanza.children[0].children[0].attrs.isClanWar);
+    var room_type = Number(stanza.children[0].children[0].attrs.room_type);
     var mission_id = stanza.children[0].children[0].attrs.mission_id;
     var incomplete_session = Number(stanza.children[0].children[0].attrs.incomplete_session);
     var session_time = Number(stanza.children[0].children[0].attrs.session_time);
@@ -23,10 +28,11 @@ exports.module = function (stanza) {
     var passed_sublevels_count = Number(stanza.children[0].children[0].attrs.passed_sublevels_count);
     var passed_checkpoints_count = Number(stanza.children[0].children[0].attrs.passed_checkpoints_count);
     var secondary_objectives_completed = Number(stanza.children[0].children[0].attrs.secondary_objectives_completed);
+    var last_boss_killed = stanza.children[0].children[0].attrs.last_boss_killed;
     var max_session_score = Number(stanza.children[0].children[0].attrs.max_session_score);
 
     var elementSetRewardsInfo = stanza.children[0].children[0];
-    
+
     var roomObject = global.gamerooms[global.gamerooms.findIndex(function (x) { return x.dedicatedServerJid == stanza.attrs.from })];
 
     if (!roomObject) {
@@ -40,6 +46,16 @@ exports.module = function (stanza) {
         global.xmppClient.responseError(stanza, { type: 'continue', code: '8', custom_code: '1' });
         return;
     }
+
+    var dynamic_multipliers_multiplier = 1;
+    var dynamic_multipliers_info = "";
+
+    if (global.cache.dynamic_multipliers.data.enabled && room_type != 1) {
+        dynamic_multipliers_multiplier = global.cache.dynamic_multipliers.data.multiplier;
+        dynamic_multipliers_info = Buffer.from(global.cache.dynamic_multipliers.data.info).toString('base64');
+    }
+
+    var timeCurrent = Math.round(new Date().getTime() / 1000);
 
     var baseSecondaryObjectiveBonusPool = secondary_objectives_completed * global.resources.RewardsConfiguration.SecondaryObjectiveBonus;//Пыл для жоп зажаний
 
@@ -93,9 +109,11 @@ exports.module = function (stanza) {
 
     var missionRewardPool = 0;
 
-    var missionSpecicalReward = global.resources.objectCustomRules.mission_reward[(missionInfo.attrs.mission_type ? missionInfo.attrs.mission_type : missionInfo.attrs.difficulty)];
+    var missionSpecicalReward = global.resources.objectCustomRules.mission_reward[missionInfo.attrs.mission_type];
 
-    if (missionInfo.attrs.game_mode == "pve") {
+    var missionGameModeFirstWinOfDayBonus = global.resources.RewardsConfiguration.GameModeFirstWinOfDayBonus.enabled && (room_type == 2) && global.resources.RewardsConfiguration.GameModeFirstWinOfDayBonus.modes[missionInfo.attrs.game_mode] ? global.resources.RewardsConfiguration.GameModeFirstWinOfDayBonus.modes[missionInfo.attrs.game_mode] : null;
+
+    if (room_type == 1 || room_type == 16) {
 
         elementPlayersPerformance = elementSetRewardsInfo.getChild("players_performance");
         if (elementPlayersPerformance) {
@@ -122,7 +140,7 @@ exports.module = function (stanza) {
         }
 
         if (missionPerformance) {
-            missionCrownReawardsByLeages = global.resources.RewardsConfiguration.CrownRewards[(missionInfo.attrs.mission_type ? missionInfo.attrs.mission_type : missionInfo.attrs.difficulty)];
+            missionCrownReawardsByLeages = global.resources.RewardsConfiguration.CrownRewards[missionInfo.attrs.mission_type];
         } else {
             //console.log("[" + stanza.attrs.from + "][SetRewardsInfo]:No missionPerformance");
         }
@@ -162,7 +180,7 @@ exports.module = function (stanza) {
             //console.log("[" + stanza.attrs.from + "][SetRewardsInfo]:No sublevels");
         }
 
-        var missionBonusRewardPoolLocal = global.resources.RewardsConfiguration.BonusRewardPool[(missionInfo.attrs.mission_type ? missionInfo.attrs.mission_type : missionInfo.attrs.difficulty)];
+        var missionBonusRewardPoolLocal = global.resources.RewardsConfiguration.BonusRewardPools[missionInfo.attrs.mission_type];
         if (missionBonusRewardPoolLocal) {
             missionBonusRewardPool = missionBonusRewardPoolLocal;
         }
@@ -173,13 +191,12 @@ exports.module = function (stanza) {
 
     //console.log("[" + stanza.attrs.from + "][SetRewardsInfo]:DefaultPools WinPool:" + baseWinPool + " LosePool:" + baseLosePool + " DrawPool:" + baseDrawPool + " ScorePool:" + baseScorePool + " SecondaryObjectiveBonusPool:" + baseSecondaryObjectiveBonusPool);
 
-    var missionMultiplierMoney = (global.resources.RewardsConfiguration.MoneyMultiplier[(roomObject.mission.type ? roomObject.mission.type : roomObject.mission.difficulty)] ? global.resources.RewardsConfiguration.MoneyMultiplier[(roomObject.mission.type ? roomObject.mission.type : roomObject.mission.difficulty)] : global.resources.RewardsConfiguration.MoneyMultiplier["default"]);
-    var missionMultiplierExperience = (global.resources.RewardsConfiguration.ExperienceMultiplier[(roomObject.mission.type ? roomObject.mission.type : roomObject.mission.difficulty)] ? global.resources.RewardsConfiguration.ExperienceMultiplier[(roomObject.mission.type ? roomObject.mission.type : roomObject.mission.difficulty)] : global.resources.RewardsConfiguration.ExperienceMultiplier["default"]);
-    var missionMultiplierSponsorPoints = (global.resources.RewardsConfiguration.SponsorPointsMultiplier[(roomObject.mission.type ? roomObject.mission.type : roomObject.mission.difficulty)] ? global.resources.RewardsConfiguration.SponsorPointsMultiplier[(roomObject.mission.type ? roomObject.mission.type : roomObject.mission.difficulty)] : global.resources.RewardsConfiguration.SponsorPointsMultiplier["default"])
-    var missionMultiplierClanPointsClanWar = (roomObject.room_type == 4 ? global.resources.RewardsConfiguration.ClanPointsClanWarMultiplier : global.resources.RewardsConfiguration.ClanPointsMultiplier);
+    var missionMultiplierMoney = (global.resources.RewardsConfiguration.MoneyMultiplier[missionInfo.attrs.mission_type] ? global.resources.RewardsConfiguration.MoneyMultiplier[missionInfo.attrs.mission_type] : global.resources.RewardsConfiguration.MoneyMultiplier["default"]);
+    var missionMultiplierExperience = (global.resources.RewardsConfiguration.ExperienceMultiplier[missionInfo.attrs.mission_type] ? global.resources.RewardsConfiguration.ExperienceMultiplier[missionInfo.attrs.mission_type] : global.resources.RewardsConfiguration.ExperienceMultiplier["default"]);
+    var missionMultiplierSponsorPoints = (global.resources.RewardsConfiguration.SponsorPointsMultiplier[missionInfo.attrs.mission_type] ? global.resources.RewardsConfiguration.SponsorPointsMultiplier[missionInfo.attrs.mission_type] : global.resources.RewardsConfiguration.SponsorPointsMultiplier["default"])
+    var missionMultiplierClanPointsClanWar = global.resources.RewardsConfiguration.ClanPointsMultiplier[room_type].RoomTypeMultiplier;
 
     var elementBroadcastSessionResult = new ltx.Element("broadcast_session_result");
-    var elementBrodcastSessionResult = new ltx.Element("brodcast_session_result");
 
     var arrBcastReceivers = [];
 
@@ -190,7 +207,7 @@ exports.module = function (stanza) {
         playersCountInRewards += elementsTeam[t].getChildren("profile").length;
     }
 
-    var playersCountMult = global.resources.RewardsConfiguration.player_count_reward_mults[playersCountInRewards - 1];
+    var playersCountMult = global.resources.RewardsConfiguration.PlayerCountRewardMults[playersCountInRewards - 1];
 
     var playersJson = {};
 
@@ -213,7 +230,7 @@ exports.module = function (stanza) {
                 continue;
             }
 
-            if (missionInfo.attrs.game_mode == "pve" && missionPerformance && winning_team_id == 1) {
+            if ((room_type == 1 || room_type == 16) && missionPerformance && winning_team_id == 1) {
                 playersJson[profileObject._id] = { nick: profileObject.nick, experience: profileObject.experience, current_class: profileObject.current_class, clan: profileObject.clan_name };
             }
 
@@ -231,15 +248,21 @@ exports.module = function (stanza) {
                 profileResultPool = baseLosePool + profileScorePool + baseSecondaryObjectiveBonusPool + missionRewardPool;
             }
 
+            //profileResultPool = profileResultPool*dynamic_multipliers_multiplier;
+
             //Тут типо TODO проверка в сессии ли игрок с самого начала и вычлесление сколько он был в сессии 
 
-            if (playersCountMult != null && missionInfo.attrs.game_mode != "pve") {
+            if (playersCountMult != null && (room_type != 1 && room_type != 16)) {
                 profileResultPool = profileResultPool * playersCountMult;
             }
+
+            //Мб тут умножение при 11 раундах
 
             if (profileResultPool < global.resources.RewardsConfiguration.MinReward) {
                 profileResultPool = global.resources.RewardsConfiguration.MinReward;
             }
+
+            profileResultPool = profileResultPool * dynamic_multipliers_multiplier;
 
             var profileNoCrownRewards = 1;
             var profileGainedCrownMoney = 0;
@@ -248,12 +271,12 @@ exports.module = function (stanza) {
 
             if (missionPerformance) {
 
-                var profilePerformanceOldStat0 = profileObject.profile_performance[roomObject.mission.mission_key] ? profileObject.profile_performance[roomObject.mission.mission_key].leaderboard["0"] : 0;
-                var profilePerformanceOldStat5 = profileObject.profile_performance[roomObject.mission.mission_key] ? profileObject.profile_performance[roomObject.mission.mission_key].leaderboard["5"] : 0;
+                var profilePerformanceOldStat0 = profileObject.profile_performance[mission_id] ? profileObject.profile_performance[mission_id].leaderboard["0"] : 0;
+                var profilePerformanceOldStat5 = profileObject.profile_performance[mission_id] ? profileObject.profile_performance[mission_id].leaderboard["5"] : 0;
 
-                var profileMissionIsWinOld = profileObject.profile_performance[roomObject.mission.mission_key] ? profileObject.profile_performance[roomObject.mission.mission_key].success : 0;
+                var profileMissionIsWinOld = profileObject.profile_performance[mission_id] ? profileObject.profile_performance[mission_id].success : 0;
 
-                scriptProfile.updateProfilePerformance(profileObject, isWin, roomObject.mission.mission_key, missionPerformance);
+                scriptProfile.updateProfilePerformance(profileObject, isWin, mission_id, missionPerformance);
 
                 if (missionBonusRewardPool && profileMissionIsWinOld == 0 && isWin == 1) {
                     profileBonusPool = missionBonusRewardPool;
@@ -261,8 +284,8 @@ exports.module = function (stanza) {
 
                 if (isWin && missionCrownRewardsThresholds) {
 
-                    var profilePerformanceNewStat0 = profileObject.profile_performance[roomObject.mission.mission_key] ? profileObject.profile_performance[roomObject.mission.mission_key].leaderboard["0"] : 0;
-                    var profilePerformanceNewStat5 = profileObject.profile_performance[roomObject.mission.mission_key] ? profileObject.profile_performance[roomObject.mission.mission_key].leaderboard["5"] : 0;
+                    var profilePerformanceNewStat0 = profileObject.profile_performance[mission_id] ? profileObject.profile_performance[mission_id].leaderboard["0"] : 0;
+                    var profilePerformanceNewStat5 = profileObject.profile_performance[mission_id] ? profileObject.profile_performance[mission_id].leaderboard["5"] : 0;
 
                     var gainedCrownsTotalPerfomanceOld = 0;
                     var gainedCrownsTimePerfomanceOld = 0;
@@ -303,6 +326,24 @@ exports.module = function (stanza) {
                 }
             }
 
+            var profileIsFirstWin = 0;
+
+            if (missionGameModeFirstWinOfDayBonus && (isWin || missionInfo.attrs.game_mode == "ffa")) {
+
+                var profileFirstWinOfDayObject = profileObject.first_win_of_day;
+
+                if (new Date((timeCurrent * 1000) + 10800000).toISOString().split("T")[0] != new Date((profileFirstWinOfDayObject.time * 1000) + 10800000).toISOString().split("T")[0]) {
+                    profileFirstWinOfDayObject.time = timeCurrent;
+                    profileFirstWinOfDayObject.modes = [];
+                }
+
+                if (profileFirstWinOfDayObject.modes.indexOf(missionInfo.attrs.game_mode) == -1) {
+                    profileBonusPool += missionGameModeFirstWinOfDayBonus;
+                    profileFirstWinOfDayObject.modes.push(missionInfo.attrs.game_mode);
+                    profileIsFirstWin = 1;
+                }
+            }
+
             //console.log("[" + stanza.attrs.from + "][SetRewardsInfo]:ProfilePools ResultPool:" + profileResultPool + " ScorePool:" + profileScorePool);
 
             var profileBoostIs = 0;
@@ -313,7 +354,7 @@ exports.module = function (stanza) {
             for (var i = 0; i < profileObject.items.length; i++) {
                 var itemObject = profileObject.items[i];
                 if (itemObject.seconds_left != 0) {
-                    var specialItemInfo = global.resources.items.data[global.resources.items.data.findIndex(function (x) { return x.isShopItem == true && x.name == itemObject.name; })];
+                    var specialItemInfo = global.cacheJsonQuickAccess.shopSpecialItems.name[itemObject.name];
                     if (specialItemInfo && specialItemInfo.itemType == "booster") {
                         profileBoostMulVp += specialItemInfo.boosterInfo.vpBoost;
                         profileBoostMulGm += specialItemInfo.boosterInfo.gmBoost;
@@ -361,8 +402,15 @@ exports.module = function (stanza) {
             var profileResultMoney = profileResultBoostedMoney;
             var profileResultExperience = profileResultBoostedExperience;
             var profileResultSponsorPoints = profileResultBoostedSponsorPoints;
-            var profileResultClanPoints = Math.round(profileResultPool * missionMultiplierClanPointsClanWar);
+            var profileResultClanPoints = Math.round((profileResultPool / dynamic_multipliers_multiplier) * missionMultiplierClanPointsClanWar);
             var profileResultCrownMoney = profileGainedCrownMoney;
+
+            profileResultSponsorPoints = getRandomIntInclusive(100, 500);
+
+            /*
+            if (profileResultSponsorPoints > 5000)
+                profileResultSponsorPoints = 5000;
+            */
 
             //console.log("[" + stanza.attrs.from + "][SetRewardsInfo]:ProfileResult Money:" + profileResultMoney + " Experience:" + profileResultExperience + " SponsorPoints:" + profileResultSponsorPoints + " ClanPoints:" + profileResultClanPoints);
             //console.log("[" + stanza.attrs.from + "][SetRewardsInfo]:ProfileResultBonus Money:" + profileResultBonusMoney + " Experience:" + profileResultBonusExperience + " SponsorPoints:" + profileResultBonusSponsorPoints);
@@ -370,14 +418,39 @@ exports.module = function (stanza) {
 
             var profileOldMoney = profileObject.game_money;
             var profileOldExperience = profileObject.experience;
-            var profileOldSponsorPoints = 0;
+            var profileOldSponsorPoints = profileObject.cry_money;
             var profileOldCrownMoney = profileObject.crown_money;
 
-            scriptProfile.giveGameItem(profileObject, [{ name: "game_money_item_01", durabilityPoints: 0, expirationTime: "", quantity: profileResultMoney, offerId: 0 }, { name: "exp_item_01", durabilityPoints: 0, expirationTime: "", quantity: profileResultExperience, offerId: 0 }, { name: "crown_money_item_01", durabilityPoints: 0, expirationTime: "", quantity: profileResultCrownMoney, offerId: 0 }], false, null, null);
+            //вместо опыта поставщиков > кредиты
+            var itemsArr = [{ name: "game_money_item_01", durabilityPoints: 0, expirationTime: "", quantity: profileResultMoney, offerId: 0 }, { name: "exp_item_01", durabilityPoints: 0, expirationTime: "", quantity: profileResultExperience, offerId: 0 }, { name: "crown_money_item_01", durabilityPoints: 0, expirationTime: "", quantity: profileResultCrownMoney, offerId: 0 }];
+            
+            if(room_type != 1){
+                itemsArr.push({ name: "cry_money_item_01", durabilityPoints: 0, expirationTime: "", quantity: profileResultSponsorPoints, offerId: 0 });
+            }
+            
+            scriptProfile.giveGameItem(profileObject, itemsArr, false, null, null);
+
+            var updateCryMoney = new ltx.Element("update_cry_money");
+            updateCryMoney.attr("cry_money", profileObject.cry_money)
+            global.xmppClient.request(profileObject.jid, updateCryMoney);
+
+            var notifiactionsArr2 = [];
+            scriptProfile.giveNotifications(profileObject.username, notifiactionsArr2, function (nAddResult) {
+
+            });
+
+
+            //notification cry_money после боя
+            /*var notifiactionsArr = [];
+            scriptProfile.giveGameItem(profileObject, [{ name: "cry_money_item_01", durabilityPoints: 0, expirationTime: "", quantity: profileResultSponsorPoints, offerId: 0 }], false, null, notifiactionsArr);
+
+            scriptProfile.giveNotifications(profileObject.username, notifiactionsArr, function (nAddResult) {
+
+            });*/
 
             var profileResultValidatedMoney = profileObject.game_money - profileOldMoney;
             var profileResultValidatedExperience = profileObject.experience - profileOldExperience;
-            var profileResultValidatedSponsorPoints = 0 - profileOldSponsorPoints;
+            var profileResultValidatedSponsorPoints = profileObject.cry_money - profileOldSponsorPoints;
             var profileResultValidatedCrownMoney = profileObject.crown_money - profileOldCrownMoney;
 
             if (profileObject.clan_name) {
@@ -390,47 +463,28 @@ exports.module = function (stanza) {
             }
 
             if (isWin && missionSpecicalReward) {
-                scriptProfile.giveSpecialReward(profileObject, missionSpecicalReward, null);
-            }
-
-            if (global.resources.objectRatingCurve && roomObject.room_type == 32) {
-
-                if (isWin) {
-                    profileObject.pvp_rating_points++;
-                } else {
-                    profileObject.pvp_rating_points--;
-                }
-
-                var maxPvpRatingPoints = global.resources.objectRatingCurve.ratings.length > 0 ? global.resources.objectRatingCurve.ratings[global.resources.objectRatingCurve.ratings.length - 1].points_required : 0;
-
-                if (profileObject.pvp_rating_points > maxPvpRatingPoints) {
-                    profileObject.pvp_rating_points = maxPvpRatingPoints;
-                }
-
-                if (profileObject.pvp_rating_points < 0) {
-                    profileObject.pvp_rating_points = 0;
-                }
+                scriptProfile.giveSpecialReward(profileObject, missionSpecicalReward);
             }
 
             //console.log("[" + stanza.attrs.from + "][SetRewardsInfo]:ProfileResultValidated Money:" + profileResultValidatedMoney + " Experience:" + profileResultValidatedExperience + " SponsorPoints:" + profileResultValidatedSponsorPoints);
 
-            var elementPlayerResult = elementBroadcastSessionResult.c("player_result", { nickname: profileObject.nick, money: profileResultValidatedMoney, experience: profileResultValidatedExperience, pvp_rating_points: profileObject.pvp_rating_points, sponsor_points: profileResultValidatedSponsorPoints, bonus_money: profileResultBonusMoney, bonus_experience: profileResultBonusExperience, bonus_sponsor_points: profileResultBonusSponsorPoints, gained_crown_money: profileResultValidatedCrownMoney, completed_stages: passed_checkpoints_count, money_boost: profileResultBoostMoney, experience_boost: profileResultBoostExperience, sponsor_points_boost: profileResultBoostSponsorPoints, experience_boost_percent: profileBoostMulXp - 1, money_boost_percent: profileBoostMulGm - 1, sponsor_points_boost_percent: profileBoostMulVp - 1, is_vip: profileBoostIs, score: elementProfile.attrs.score, no_crown_rewards: profileNoCrownRewards, dynamic_multipliers_info: "", dynamic_crown_multiplier: 1, misison_passed: (0 + (profileObject.missions_unlocked.indexOf("easymission") != -1 ? 64 : 0) + (profileObject.missions_unlocked.indexOf("normalmission") != -1 ? 128 : 0) + (profileObject.missions_unlocked.indexOf("hardmission") != -1 ? 256 : 0)) });
+            var elementPlayerResult = elementBroadcastSessionResult.c("player_result", { nickname: profileObject.nick, money: profileResultValidatedMoney, experience: profileResultValidatedExperience, sponsor_points: profileResultValidatedSponsorPoints, clan_points: profileResultClanPoints, bonus_money: profileResultBonusMoney, bonus_experience: profileResultBonusExperience, bonus_sponsor_points: profileResultBonusSponsorPoints, gained_crown_money: profileResultValidatedCrownMoney, completed_stages: passed_checkpoints_count, money_boost: profileResultBoostMoney, experience_boost: profileResultBoostExperience, sponsor_points_boost: profileResultBoostSponsorPoints, experience_boost_percent: profileBoostMulXp - 1, money_boost_percent: profileBoostMulGm - 1, sponsor_points_boost_percent: profileBoostMulVp - 1, is_vip: profileBoostIs, score: elementProfile.attrs.score, no_crown_rewards: profileNoCrownRewards, dynamic_multipliers_info: dynamic_multipliers_info, dynamic_crown_multiplier: 1, first_win: profileIsFirstWin });
             elementPlayerResult.c("profile_progression_update", { profile_id: profileObject._id, mission_unlocked: "none," + profileObject.missions_unlocked.join(",") + ",all", tutorial_unlocked: (1 + (profileObject.experience >= 120 ? 2 : 0) + (profileObject.experience >= 2900 ? 4 : 0)), tutorial_passed: scriptTools.getFlagByNumericArray(profileObject.tutorials_passed), class_unlocked: scriptTools.getFlagByNumericArray(profileObject.classes_unlocked) });
-            elementBrodcastSessionResult.children.push(elementPlayerResult);
-            arrBcastReceivers.push(profileObject.username + "@" + global.config.masterserver.domain + "/GameClient");
+            arrBcastReceivers.push(profileObject.jid);
         }
     }
 
     if (elementPlayersPerformance) {
         elementBroadcastSessionResult.children.push(elementPlayersPerformance);
-        elementBrodcastSessionResult.children.push(elementPlayersPerformance);
     }
 
     if (winning_team_id == 1 && missionPerformance) {
 
+        /*
         global.db.warface.cache.updateOne({ _id: "performance" }, { "$set": { _id: "performance", hash: Math.round(new Date().getTime() / 1000) }, "$push": { data: { mission_id: mission_id, stats: missionPerformance, players: playersJson } } }, { upsert: true }, function (err, dbUpdate) {
 
         });
+        */
 
     }
 
@@ -455,6 +509,4 @@ exports.module = function (stanza) {
     elementBroadcastSessionResult.attrs.bcast_receivers = arrBcastReceivers.join(",");
     global.xmppClient.request("k01." + global.config.masterserver.domain, elementBroadcastSessionResult);
 
-    elementBrodcastSessionResult.attrs.bcast_receivers = arrBcastReceivers.join(",");
-    global.xmppClient.request("k01." + global.config.masterserver.domain, elementBrodcastSessionResult);
 }
