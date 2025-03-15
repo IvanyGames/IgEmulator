@@ -68,7 +68,20 @@ exports.module = function (stanza) {
         return;
     }
 
-    var missionInfo = (global.startupParams.channel == "pve" ? global.CacheQuickAccess.missionsPvE.uid[mission_key] : global.resources.missions.uid[mission_key]);
+    var missionInfo;
+
+    if (global.startupParams.channel == "pve") {
+        missionInfo = global.CacheQuickAccess.missionsPvE.uid[mission_key];
+    } else if (global.startupParams.channel == "pvp_newbie" || global.startupParams.channel == "pvp_skilled" || global.startupParams.channel == "pvp_pro") {
+        missionInfo = global.resources.missions.uid[mission_key];
+    } else {
+
+        missionInfo = global.CacheQuickAccess.missionsPvE.uid[mission_key];
+
+        if (!missionInfo) {
+            missionInfo = global.resources.missions.uid[mission_key];
+        }
+    }
 
     if (!missionInfo) {
         //console.log("[" + stanza.attrs.from + "][GameroomUpdatePvP]:Mission is not found");

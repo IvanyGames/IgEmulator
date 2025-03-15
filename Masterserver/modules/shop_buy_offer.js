@@ -46,7 +46,13 @@ exports.module = function (stanza) {
         profileObject.cry_money -= offerShopInfo.cry_price;
         profileObject.crown_money -= offerShopInfo.crown_price;
 
-        itemsToGiveArr.push({ name: offerShopInfo.name, durabilityPoints: offerShopInfo.durabilityPoints, expirationTime: offerShopInfo.expirationTime, quantity: offerShopInfo.quantity, offerId: offerShopInfo.id });
+        var vDurabilityPoints = offerShopInfo.durabilityPoints;
+
+        if (global.startupParams.compatibility_shop_durability_points == "1" && offerShopInfo.durabilityPoints == 0 && offerShopInfo.expirationTime == "" && offerShopInfo.quantity == 0) {
+            vDurabilityPoints = 36000;
+        }
+
+        itemsToGiveArr.push({ name: offerShopInfo.name, durabilityPoints: vDurabilityPoints, expirationTime: offerShopInfo.expirationTime, quantity: offerShopInfo.quantity, offerId: offerShopInfo.id });
     }
 
     scriptProfile.giveGameItem(profileObject, itemsToGiveArr, false, elementPurchasedItem.children, null);

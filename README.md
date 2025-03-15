@@ -1,5 +1,5 @@
 # Warface Server Emulator
-Server emulator for older versions of the Warface game, from 04/25/2012 to 06/28/2017.
+Server emulator for older versions of the Warface game, from 04/12/2012 to 06/28/2017.
 # Installation and launch
 1. Download the emulator [Releases](https://github.com/ivanygames/igemulator/releases).
 2. Launching the emulator `MongoDbStart.bat`, `XmppServerTcp.bat`, `ComponentConferenceStart.bat`, `ComponentWFCStart.bat`, `Masterserver(Ru)(1.15000.1392.22400)(pve_001)`, `Masterserver(Ru)(1.15000.1392.22400)(pvp_pro_001).bat`.
