@@ -62,7 +62,6 @@ function loadDb() {
 			global.db.warface.accounts = dbClient.db("warface").collection("accounts");
 			global.db.warface.profiles = dbClient.db("warface").collection("profiles");
 			global.db.warface.cache = dbClient.db("warface").collection("cache_" + global.startupParams.locale + "_" + global.startupParams.ver);
-			global.db.warface.cache_all_all = dbClient.db("warface").collection("cache_all_all");
 			global.db.warface.clans = dbClient.db("warface").collection("clans");
 			global.db.warface.hwban = dbClient.db("warface").collection("hwban");
 			initCache();

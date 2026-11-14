@@ -714,7 +714,7 @@ exports.startSession = function (roomObject) {
 
     var elementAnticheatConfiguration = elementMissionLoad.c("anticheat_configuration");
     try {
-        elementAnticheatConfiguration.children = ltx.parse(fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/masterserver/anticheat_configuration.xml", "utf-8")).children;
+        elementAnticheatConfiguration.children = ltx.parse(fs.readFileSync("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/masterserver/anticheat_configuration.xml", "utf-8")).children;
     } catch (e) {
 
     }

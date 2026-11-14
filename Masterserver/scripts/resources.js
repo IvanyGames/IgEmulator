@@ -73,7 +73,7 @@ function loadItems() {
 	]
 
 	var resultData = [];
-	var items_paths = getFiles("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/items");
+	var items_paths = getFiles("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/items");
 	var cur_item_id = 1;
 	for (cur_item in items_paths) {
 		var item_path = items_paths[cur_item].split("/");
@@ -346,7 +346,7 @@ function loadSponsors() {
 
 		var sponsorsElement;
 
-		var sponsorsPath = "./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/sponsorssystem/sponsors/" + sponsorsCategoryName.toLowerCase() + ".xml";
+		var sponsorsPath = "../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/sponsorssystem/sponsors/" + sponsorsCategoryName.toLowerCase() + ".xml";
 
 		try {
 			sponsorsElement = ltx.parse(fs.readFileSync(sponsorsPath));
@@ -529,7 +529,7 @@ function loadSponsors() {
 function loadExpCurveTable() {
 	console.log("[ResourcesLoad]:Loading ExpCurveTable");
 	global.resources.tableExpCurve = {};
-	var ExpCurve = ltx.parse(fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/expcurve.xml"));
+	var ExpCurve = ltx.parse(fs.readFileSync("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/expcurve.xml"));
 	for (var i = 0; i < ExpCurve.children.length; i++) {
 		var Level = ExpCurve.children[i];
 		if (Level.name != null) {
@@ -542,7 +542,7 @@ function loadDefaultSlots() {
 	console.log("[ResourcesLoad]:Loading DefaultSlots");
 
 	var defaultSlotsObj = {};
-	var default_slots = ltx.parse(fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/default_slots.xml")).getChildren("slot_def");
+	var default_slots = ltx.parse(fs.readFileSync("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/default_slots.xml")).getChildren("slot_def");
 	for (cur_def_slot in default_slots) {
 		defaultSlotsObj[default_slots[cur_def_slot].attrs.name] = { id: Number(default_slots[cur_def_slot].attrs.id), always_equip: Boolean(default_slots[cur_def_slot].attrs.always_equip) }
 	}
@@ -554,7 +554,7 @@ function loadDefaultItems() {
 
 	var defaultItemsNamesObject = {};
 	var defaultItemsArr = [];
-	var elementDefaultItems = ltx.parse(fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/defaultitems.xml")).getChildren("item");
+	var elementDefaultItems = ltx.parse(fs.readFileSync("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/defaultitems.xml")).getChildren("item");
 
 	var classesIdexesTable = ["R", "H", "S", "M", "E"];
 
@@ -650,7 +650,7 @@ function loadGameModesConfig() {
 		gmcJson[modeName].restrictions[restrictionName][roomType] = newValue;
 	}
 
-	var elementGameModesConfig = ltx.parse(fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/masterserver/game_modes_config.xml", "utf8"));
+	var elementGameModesConfig = ltx.parse(fs.readFileSync("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/masterserver/game_modes_config.xml", "utf8"));
 
 	var elementRestrictionOptions = elementGameModesConfig.getChild("restriction_options");
 
@@ -767,7 +767,7 @@ function loadGameModesConfig() {
 	var elementGameModesConfigGameModes = elementGameModesConfig.getChild("game_modes");
 	if (!elementGameModesConfigGameModes) {
 		elementGameModesConfigGameModes = elementGameModesConfig.c("game_modes");
-		var gamemodesPathsArr = getFiles("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/masterserver/gamemodes");
+		var gamemodesPathsArr = getFiles("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/masterserver/gamemodes");
 		for (var i = 0; i < gamemodesPathsArr.length; i++) {
 			var gamemodeElement = ltx.parse(fs.readFileSync(gamemodesPathsArr[i]));
 			elementGameModesConfigGameModes.children.push(gamemodeElement);
@@ -820,7 +820,7 @@ function loadRewardsConfiguration() {
 	var fileRewardsConfiguration
 
 	try {
-		fileRewardsConfiguration = fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/masterserver/rewards_configuration.xml");
+		fileRewardsConfiguration = fs.readFileSync("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/masterserver/rewards_configuration.xml");
 	} catch (e) {
 		console.log("[ResourcesLoad][loadRewardsConfiguration]: Failed to open file 'rewards_configuration.xml'");
 		throw "";
@@ -1002,7 +1002,7 @@ function loadMissions() {
 
 	var missionsObject = { uid: {}, name: {} };
 
-	var missionsPathsArr = getFiles("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/missions");
+	var missionsPathsArr = getFiles("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/missions");
 
 	for (var i = 0; i < missionsPathsArr.length; i++) {
 		var missionLtxParsed = ltx.parse(fs.readFileSync(missionsPathsArr[i], "utf-8"));
@@ -1050,7 +1050,7 @@ function loadQuickplayMaps() {
 	var fileQuickplayMapsXml;
 
 	try {
-		fileQuickplayMapsXml = fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/masterserver/quickplay_maps.xml");
+		fileQuickplayMapsXml = fs.readFileSync("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/masterserver/quickplay_maps.xml");
 	} catch (e) {
 		if (e.code != "ENOENT") {
 			throw e;
@@ -1109,12 +1109,12 @@ function loadAchievementsList() {
 	console.log("[ResourcesLoad]:Loading AchievementsList");
 
 	var achievementsArr = [];
-	var AchievementDesc = ltx.parse(fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/achievementdesc.xml"));
+	var AchievementDesc = ltx.parse(fs.readFileSync("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/achievementdesc.xml"));
 
 	var LocalizationObj = {};
 
 	/*
-	var AchievementLocalization = ltx.parse(fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/languages/text_achievements.xml"));
+	var AchievementLocalization = ltx.parse(fs.readFileSync("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/languages/text_achievements.xml"));
 	
 	var AchievementLocalizationTableC = AchievementLocalization.getChild("Worksheet").getChild("Table").getChildren("Row");
 
@@ -1142,7 +1142,7 @@ function loadAchievementsList() {
 	}
 	*/
 
-	var achievementsPathsArr = getFiles("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/achievements");
+	var achievementsPathsArr = getFiles("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/achievements");
 
 	for (var i = 0; i < achievementsPathsArr.length; i++) {
 		AchievementDesc.children.push(ltx.parse(fs.readFileSync(achievementsPathsArr[i], "utf-8")));
@@ -1174,7 +1174,7 @@ function loadSpecialRewardConfiguration() {
 	var fileSpecialRewardConfigurationXml;
 
 	try {
-		fileSpecialRewardConfigurationXml = fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/masterserver/special_reward_configuration.xml");
+		fileSpecialRewardConfigurationXml = fs.readFileSync("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/masterserver/special_reward_configuration.xml");
 	} catch (e) {
 		if (e.code != "ENOENT") {
 			throw e;
@@ -1312,7 +1312,7 @@ function loadProfileProgressionConfig() {
 	var fileProfileProgressionConfigXml;
 
 	try {
-		fileProfileProgressionConfigXml = fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/masterserver/profile_progression_config.xml");
+		fileProfileProgressionConfigXml = fs.readFileSync("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/masterserver/profile_progression_config.xml");
 	} catch (e) {
 		if (e.code != "ENOENT") {
 			throw e;
@@ -1425,7 +1425,7 @@ function loadCustomRules() {
 	var fileCustomRulesXml;
 
 	try {
-		fileCustomRulesXml = fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/masterserver/custom_rules.xml");
+		fileCustomRulesXml = fs.readFileSync("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/masterserver/custom_rules.xml");
 	} catch (e) {
 		if (e.code != "ENOENT") {
 			throw e;
@@ -1618,7 +1618,7 @@ function loadRatingCurve() {
 	var fileRatingCurveXml;
 
 	try {
-		fileRatingCurveXml = fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.ver + "/libs/config/masterserver/rating_curve.xml");
+		fileRatingCurveXml = fs.readFileSync("../Startup/" + global.startupParams.locale + "_" + global.startupParams.ver + "/gamedata" + "/libs/config/masterserver/rating_curve.xml");
 	} catch (e) {
 		if (e.code != "ENOENT") {
 			throw e;

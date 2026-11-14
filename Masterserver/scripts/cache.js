@@ -8,7 +8,7 @@ exports.init = function (callBackInit) {
 
 	var cacheUpdateHandlers = [
 		{ name: "shop", "handler": cacheHandlerShop, hash: 0 },
-		{ name: "clan_list", "handler": cacheClanList, hash: 0, isAll: true },
+		{ name: "clan_list", "handler": cacheClanList, hash: 0 },
 		{ name: "missions_pve", "handler": cacheMissionsPvE, hash: 0 },
 		{ name: "performance", "handler": cachePerformance, hash: 0 }
 	];
@@ -17,18 +17,13 @@ exports.init = function (callBackInit) {
 		var i = 0;
 		function updateCacheRecursive(callbackEnd) {
 			if (i < cacheUpdateHandlers.length) {
+
 				var cacheInfo = cacheUpdateHandlers[i];
 
-				var dbCacheCollection = global.db.warface.cache;
-
-				if (cacheInfo.isAll) {
-					dbCacheCollection = global.db.warface.cache_all_all;
-				}
-
-				dbCacheCollection.findOne({ _id: cacheInfo.name }, { projection: { "hash": 1 } }, function (err, dbCache) {
+				global.db.warface.cache.findOne({ _id: cacheInfo.name }, { projection: { "hash": 1 } }, function (err, dbCache) {
 					if (dbCache != null) {
 						if (dbCache.hash != cacheInfo.hash) {
-							dbCacheCollection.findOne({ _id: cacheInfo.name }, { projection: { "_id": 0 } }, function (err1, dbCacheData) {
+							global.db.warface.cache.findOne({ _id: cacheInfo.name }, { projection: { "_id": 0 } }, function (err1, dbCacheData) {
 								if (dbCacheData != null && dbCacheData.data != null) {
 									global.cache[cacheInfo.name] = { hash: dbCacheData.hash, data: dbCacheData.data };
 									cacheInfo.hash = dbCacheData.hash;

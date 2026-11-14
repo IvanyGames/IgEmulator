@@ -4,10 +4,12 @@ var fs = require("fs");
 var skipTestOffers = true;
 exports.module = function (callback) {
 
+	var gameDataDir = "../../Startup/" + global.startupParams.locale + "_" + global.startupParams.version + "/gamedata";
+
 	var usedStoreIds = [];
 
 	var resultData = [];
-	var dirData = fs.readdirSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.version + "/libs/config/Shop");
+	var dirData = fs.readdirSync(gameDataDir + "/libs/config/Shop");
 	for (var e = 0; e < dirData.length; e++) {
 		var dirElementName = dirData[e];
 
@@ -19,7 +21,7 @@ exports.module = function (callback) {
 
 		//Пропуск элементов о которых не удалось получить информацию, или которые являются директориями
 		try {
-			if (fs.statSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.version + "/libs/config/Shop/" + dirElementName).isDirectory() == true) {
+			if (fs.statSync(gameDataDir + "/libs/config/Shop/" + dirElementName).isDirectory() == true) {
 				console.log("[CacheShop]:Skip '" + dirElementName + "' this is directory!");
 				continue;
 			}
@@ -30,7 +32,7 @@ exports.module = function (callback) {
 
 		var fileData = null;
 		try {
-			fileData = fs.readFileSync("./gamedata/" + global.startupParams.locale + "_" + global.startupParams.version + "/libs/config/Shop/" + dirElementName, "utf8");
+			fileData = fs.readFileSync(gameDataDir + "/libs/config/Shop/" + dirElementName, "utf8");
 		} catch (err) {
 			console.log("[CacheShop]:Skip '" + dirElementName + "' couldn't read!");
 			continue;
