@@ -423,25 +423,50 @@ function hadlerCommandKing(stanza, profileObject) {
     CommandResult(stanza, "[Выполнена]");
 }
 
-function hadlerCommandGiveSponsorPointsTest(stanza, profileObject) {
+function hadlerCommandGiveSponsorPoints(stanza, profileObject) {
 
     var args = stanza.children[0].children[0].attrs.args.split(" ");
 
-    if (args.length != 1) {
-        CommandResult(stanza, "[Не выполнена] Недостаточно аргументов");
+    if (args.length != 2) {
+        CommandResult(stanza, "[Не выполнена] Не был указан аргумент");
         return;
     }
 
-    var argPoints = Number(args[0]);
+    var profileObject = global.users.jid[stanza.attrs.from];
+
+    if (!profileObject) {
+        CommandResult(stanza, "[Не выполнена] Вы не находитесь на канале");
+        return;
+    }
+
+    var roomObject = profileObject.room_object;
+
+    if (!roomObject) {
+        CommandResult(stanza, "[Не выполнена] Вы не находитесь в комнате");
+        return;
+    }
+
+    var playerObjectTarget = roomObject.core.players[roomObject.core.players.findIndex(function (x) { return x.nickname == args[0] })];
+
+    if (!playerObjectTarget) {
+        CommandResult(stanza, "[Не выполнена] Игрок '" + args[0] + "' не найден в комнате");
+        return;
+    }
+
+    var profileObjectTarget = global.users.jid[playerObjectTarget.online_id];
+
+    var argPoints = Number(args[1]);
 
     if (Number.isNaN(argPoints) || !Number.isSafeInteger(argPoints) || argPoints < 0 || argPoints > 4294967295) {
         CommandResult(stanza, "[Не выполнена] Значение поинтов должно быть целочисленым и больше нуля");
         return;
     }
 
-    var giveResult = scriptProfile.giveSponsorsPoints(profileObject, argPoints);
+    var giveResult0 = scriptProfile.giveSponsorsPoints(profileObjectTarget, argPoints, 0);
+    var giveResult1 = scriptProfile.giveSponsorsPoints(profileObjectTarget, argPoints, 1);
+    var giveResult2 = scriptProfile.giveSponsorsPoints(profileObjectTarget, argPoints, 2);
 
-    CommandResult(stanza, "[Выполнена] Выдано " + giveResult + " поинтов");
+    CommandResult(stanza, "[Выполнена] Выдано " + JSON.stringify(([giveResult0, giveResult1, giveResult2])) + " поинтов");
 }
 
 exports.module = function (stanza, profileObject) {
@@ -492,8 +517,8 @@ exports.module = function (stanza, profileObject) {
             break;
         case "king":
             hadlerCommandKing(stanza, profileObject);
-        case "tgp":
-            hadlerCommandGiveSponsorPointsTest(stanza, profileObject);
+        case "givesponsor":
+            hadlerCommandGiveSponsorPoints(stanza);
         default:
             CommandResult(stanza, "Комманда не найдена или недоступна для вас, напишите 'help' что-бы узнать доступные комманды");
             break;

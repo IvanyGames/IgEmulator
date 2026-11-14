@@ -1116,12 +1116,16 @@ exports.updateSponsorsNextUnlockItem = function (profileObject) {
 
 }
 
-exports.giveSponsorsPoints = function (profileObject, points) {
+exports.giveSponsorsPoints = function (profileObject, points, setCategoryId) {
 
 	var categoryId = 0;
 
 	if (profileObject.persistent_settings.sponsor && (profileObject.persistent_settings.sponsor.id == "0" || profileObject.persistent_settings.sponsor.id == "1" || profileObject.persistent_settings.sponsor.id == "2")) {
 		categoryId = Number(profileObject.persistent_settings.sponsor.id);
+	}
+
+	if(setCategoryId != null){
+		categoryId = setCategoryId;
 	}
 
 	var profileSponsorsCategoryObject = profileObject.sponsors.categories[categoryId];

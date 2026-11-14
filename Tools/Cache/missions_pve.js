@@ -252,7 +252,17 @@ exports.module = function (callback) {
 
         while (cur_generation_count < count_to_gen) {
             console.log("[CacheMissionsPvE]:Generation mission of type '" + Settings_c[mtcount].name + "'");
-            var cur_gen_missions = generate_one_mission(Settings_c[mtcount]);
+
+            var cur_gen_missions;
+
+            try {
+                cur_gen_missions = generate_one_mission(Settings_c[mtcount]);
+            } catch (e) {
+                console.log(e);
+                callback();
+                return;
+            }
+
             for (k = 0; k < cur_gen_missions.length; k++) {
                 removeTextFromLtxElements(cur_gen_missions[k]);
                 resultData.push(cur_gen_missions[k].toString());
@@ -285,7 +295,9 @@ exports.module = function (callback) {
                 }
 
             } else {
-                throw "Ошибка-> тип:" + Settings_c[mtcount].attrs.propagate_on_expire + " не найден";
+                console.log("Ошибка-> тип:" + Settings_c[mtcount].attrs.propagate_on_expire + " не найден");
+                callback();
+                return;
             }
         } else {
             mtcount++;
