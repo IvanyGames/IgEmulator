@@ -54,6 +54,10 @@ function hadlerCommandBan(stanza) {
             return;
         }
 
+        CommandResult(stanza, "[Не выполнена] Команда не реализована");
+        return;
+
+        /*
         global.db.warface.accounts.updateOne({ _id: Number(resultProfile.username) }, { "$set": { ban: { expires: Math.round(new Date().getTime() / 1000.0) + 315360000, cause: 20 } } }, { projection: { "_id": 1 } }, function (errProfile1, resultProfile1) {
             console.log(errProfile1);
             if (resultProfile1) {
@@ -63,6 +67,7 @@ function hadlerCommandBan(stanza) {
                 CommandResult(stanza, "[Выполнена] Игрок '" + args + "' уже был заблокирован");
             }
         });
+        */
     })
 }
 
