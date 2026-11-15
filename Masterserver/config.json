@@ -133,5 +133,9 @@
 		"cry_money": 10000000,
 		"crown_money": 10000000,
 		"experience": 0
-	}
+	},
+	"admin_cmd_users": [
+		"1",
+		"2"
+	]
 }

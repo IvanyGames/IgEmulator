@@ -2,8 +2,41 @@ var ltxElement = require('ltx').Element
 var scriptProfile = require('../scripts/profile.js')
 var scriptGameroom = require('../scripts/gameroom.js')
 
+var commandHandlers = {
+    "help": { handler: hadlerCommandHelp, desc: "Показать доступные команды", isForAll: true },
+    "kick": { handler: hadlerCommandKick, desc: "Кикнуть с сервера", isForAll: false },
+    "ban": { handler: hadlerCommandBan, desc: "Забанить на сервере", isForAll: false },
+    "observer": { handler: handlerCommandObserver, desc: "Перейти в наблюдатели", isForAll: false },
+    "giveachievement": { handler: hadlerCommandGiveAchievement, desc: "Выдать достижение", isForAll: false },
+    "giveitem": { handler: hadlerCommandGiveItem, desc: "Выдать предмет", isForAll: false },
+    "funmap": { handler: hadlerCommandFunmap, desc: "Установить pve карту на pvp", isForAll: false },
+    "online": { handler: hadlerCommandOnline, desc: "Получить онлайн", isForAll: false },
+    "screen": { handler: hadlerCommandScreen, desc: "Сделать скрин окна игры", isForAll: false },
+    "king": { handler: hadlerCommandKing, desc: "Получить лидера комнаты", isForAll: false },
+    "givesponsor": { handler: hadlerCommandGiveSponsorPoints, desc: "Выдать опыт поставщиков", isForAll: false },
+    "us": { handler: hadlerCommandUnlockSponsors, desc: "Открыть все поставщики", isForAll: true }
+}
+
 function CommandResult(stanza, result) {
     global.xmppClient.response(stanza, new ltxElement("admin_cmd", { command: stanza.children[0].children[0].attrs.command, result: result }));
+}
+
+function hadlerCommandHelp(stanza, profileObject) {
+
+    CommandResult(stanza, "Доступные комманды");
+
+    var availableCommands = "";
+
+    for (var key in commandHandlers) {
+
+        if (!commandHandlers[key].isForAll && global.config.admin_cmd_users.indexOf(profileObject.username) == -1) {
+            continue;
+        }
+
+        availableCommands += (key + " ");
+
+        global.xmppClient.request(stanza.attrs.from, new ltxElement("admin_cmd", { command: stanza.children[0].children[0].attrs.command, result: "/remote " + key + " | " + (commandHandlers[key].desc ? commandHandlers[key].desc : "") }));
+    }
 }
 
 function hadlerCommandKick(stanza) {
@@ -111,29 +144,6 @@ function handlerCommandObserver(stanza) {
 
     roomObject.core.can_start = scriptGameroom.getCanStart(roomObject);
     roomObject.core.revision++;
-}
-
-function hadlerCommandFindAchievements(stanza) {
-
-    var args = stanza.children[0].children[0].attrs.args;
-
-    if (!args) {
-        CommandResult(stanza, "[Не выполнена] Не было указано частичное/полное название достяжения");
-        return;
-    }
-
-    var achievementPartialName = args;
-
-    CommandResult(stanza, "[Выполнена]");
-
-    for (var i = 0; i < global.resources.achievementsArr.length; i++) {
-
-        var achievementInfo = global.resources.achievementsArr[i];
-
-        if (achievementInfo.name.indexOf(achievementPartialName) != -1) {
-            global.xmppClient.request(stanza.attrs.from, new ltxElement("admin_cmd", { command: stanza.children[0].children[0].attrs.command, result: achievementInfo.id + " " + achievementInfo.name }));
-        }
-    }
 }
 
 function hadlerCommandGiveAchievement(stanza) {
@@ -474,7 +484,21 @@ function hadlerCommandGiveSponsorPoints(stanza, profileObject) {
     CommandResult(stanza, "[Выполнена] Выдано " + JSON.stringify(([giveResult0, giveResult1, giveResult2])) + " поинтов");
 }
 
-exports.module = function (stanza, profileObject) {
+function hadlerCommandUnlockSponsors(stanza, profileObject) {
+
+    var giveResult0 = scriptProfile.giveSponsorsPoints(profileObject, 4294967295, 0);
+    var giveResult1 = scriptProfile.giveSponsorsPoints(profileObject, 4294967295, 1);
+    var giveResult2 = scriptProfile.giveSponsorsPoints(profileObject, 4294967295, 2);
+
+    if ((giveResult0 + giveResult1 + giveResult2) < 1) {
+        CommandResult(stanza, "[Выполнена] Поставщики уже открыты");
+        return;
+    }
+
+    CommandResult(stanza, "[Выполнена] Поставщики открыты");
+}
+
+exports.module = function (stanza) {
 
     var profileObject = global.users.jid[stanza.attrs.from];
 
@@ -484,49 +508,17 @@ exports.module = function (stanza, profileObject) {
         return;
     }
 
-    if (profileObject.username != "1" && profileObject.username != "2") {
-        global.xmppClient.request("k01." + global.config.masterserver.domain, new ltxElement("xmpp_kick", { username: profileObject.username }));
+    var commandObject = commandHandlers[stanza.children[0].children[0].attrs.command];
+
+    if (!commandObject) {
+        CommandResult(stanza, "Комманда не найдена, напишите /remote help что-бы узнать доступные комманды");
         return;
     }
 
-    switch (stanza.children[0].children[0].attrs.command) {
-        case "help":
-            CommandResult(stanza, "Доступные комманды: 'kick', 'ban', 'observer'");
-            break;
-        case "kick":
-            hadlerCommandKick(stanza);
-            break;
-        case "ban":
-            hadlerCommandBan(stanza);
-            break;
-        case "observer":
-            handlerCommandObserver(stanza);
-            break;
-        case "findachievements":
-            hadlerCommandFindAchievements(stanza);
-            break
-        case "giveachievement":
-            hadlerCommandGiveAchievement(stanza);
-            break
-        case "giveitem":
-            hadlerCommandGiveItem(stanza);
-            break;
-        case "funmap":
-            hadlerCommandFunmap(stanza);
-            break;
-        case "online":
-            hadlerCommandOnline(stanza);
-            break;
-        case "screen":
-            hadlerCommandScreen(stanza, profileObject);
-            break;
-        case "king":
-            hadlerCommandKing(stanza, profileObject);
-        case "givesponsor":
-            hadlerCommandGiveSponsorPoints(stanza);
-        default:
-            CommandResult(stanza, "Комманда не найдена или недоступна для вас, напишите 'help' что-бы узнать доступные комманды");
-            break;
+    if (!commandObject.isForAll && admin_cmd_users.indexOf(profileObject.username) == -1) {
+        CommandResult(stanza, "Комманда недоступна для вас, напишите /remote help что-бы узнать доступные комманды");
+        return;
     }
 
+    commandObject.handler(stanza, profileObject);
 }
