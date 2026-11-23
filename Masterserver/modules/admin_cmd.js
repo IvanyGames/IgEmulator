@@ -515,7 +515,7 @@ exports.module = function (stanza) {
         return;
     }
 
-    if (!commandObject.isForAll && admin_cmd_users.indexOf(profileObject.username) == -1) {
+    if (!commandObject.isForAll && global.config.admin_cmd_users.indexOf(profileObject.username) == -1) {
         CommandResult(stanza, "Комманда недоступна для вас, напишите /remote help что-бы узнать доступные комманды");
         return;
     }

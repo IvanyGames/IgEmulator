@@ -1,6 +1,6 @@
 const Component = require('node-xmpp-component')
 const ltx = require('ltx')
-const MongoClient = require("mongodb").MongoClient;
+var mongoClient = require("mongodb").MongoClient;
 
 global.startupParams = {};
 for (argKey in process.argv) {
@@ -18,16 +18,15 @@ if (global.startupParams.config) {
 
 const config = require(configPath);
 
-//Mongodb
-var collection_profiles = null;
-
 var chats = {};
 
 //Максимальное количество пользователей при котором возможна обмена presence сообщениями (Нужно для работы вкладки "Игроки в сети").Не рекомендуется ставить больше чем 200 т.к клиент не потдерживает больше,и это вызывает перегрузку prosody.
 var presence_max_users = 1000;
 
-console.log("[MongoDb]:Connecting...");
-function connect_to_mongodb() {
+function loadDb() {
+
+	global.db = {};
+	console.log("[MongoDb]:Connecting");
 
 	var mongoConnectionAttrs = { useNewUrlParser: true, useUnifiedTopology: true };
 
@@ -35,20 +34,68 @@ function connect_to_mongodb() {
 		mongoConnectionAttrs.reconnectTries = Number.MAX_VALUE;
 	}
 
-	MongoClient.connect(config.mongodb, mongoConnectionAttrs, function (err, db_client_c) {
-		if (db_client_c != null) {
-			console.log("[MongoDb]:Connected");
-			collection_profiles = db_client_c.db("warface").collection("profiles");
-			connect_to_prosody();
+	mongoClient.connect(config.mongodb, mongoConnectionAttrs, function (err, dbClient) {
+
+		if (dbClient != null) {
+
+			global.db.warface = {};
+			global.db.warface.profiles = dbClient.db("warface").collection("profiles_" + global.startupParams.locale + "_" + global.startupParams.ver);
+			global.db.warface.cache = dbClient.db("warface").collection("cache_" + global.startupParams.locale + "_" + global.startupParams.ver);
+			global.db.warface.clans = dbClient.db("warface").collection("clans_" + global.startupParams.locale + "_" + global.startupParams.ver);
+			global.db.warface.hwban = dbClient.db("warface").collection("hwban");
+
+			console.log("[MongoDb]:Initializing 'profiles'");
+
+			global.db.warface.profiles.createIndexes([{ key: { _id: 1 }, name: "_id_" }, { key: { username: 1 }, name: "_username_", unique: true }, { key: { nick: 1 }, name: "_nick_", unique: true }, { key: { clan_name: 1 }, name: "_clan_name_" }], function (errCreateProfilesIndexes) {
+
+				if (errCreateProfilesIndexes) {
+					console.log(errCreateProfilesIndexes);
+					throw "";
+				}
+
+				console.log("[MongoDb]:Initializing 'clans'");
+
+				global.db.warface.clans.createIndexes([{ key: { _id: 1 }, name: "_id_" }, { key: { name: 1 }, name: "_name_", unique: true }], function (errCreateClansIndexes) {
+
+					if (errCreateClansIndexes) {
+						console.log(errCreateClansIndexes);
+						throw "";
+					}
+
+					console.log("[MongoDb]:Initializing 'cache'");
+
+					global.db.warface.cache.createIndexes([{ key: { _id: 1 }, name: "_id_" }], function (errCreateCacheIndexes) {
+
+						if (errCreateCacheIndexes) {
+							console.log(errCreateCacheIndexes);
+							throw "";
+						}
+
+						console.log("[MongoDb]:Initializing 'hwban'");
+
+						global.db.warface.hwban.createIndexes([{ key: { _id: 1 }, name: "_id_" }], function (errCreateHwbanIndexes) {
+
+							if (errCreateHwbanIndexes) {
+								console.log(errCreateHwbanIndexes);
+								throw "";
+							}
+
+							connect_to_prosody();
+						});
+
+					});
+
+				});
+			});
 		} else {
-			console.log("[MongoDb]:Connect error -> " + err.message + "\n[MongoDb]:Reconnecting...");
+			console.log("[MongoDb]:Connect error -> " + err.message);
 			setTimeout(function () {
-				connect_to_mongodb();//Попытка переподключения при ошибке подключения
+				loadDb();
 			}, 1000);
 		}
 	});
 }
-connect_to_mongodb();
+loadDb();
 
 //Функция подключения к Prosody
 function connect_to_prosody() {
@@ -66,7 +113,7 @@ function connect_to_prosody() {
 		if (stanza.name == "presence") {
 			if (stanza.attrs.type == null) {
 				var username = stanza.attrs.from.split('@')[0];
-				collection_profiles.findOne({ username: username }, { projection: { "nick": 1 } }, function (err, profile_db) {
+				global.db.warface.profiles.findOne({ username: username }, { projection: { "nick": 1 } }, function (err, profile_db) {
 					if (profile_db != null) {
 						if (chats[chat_id] == null || chats[chat_id][stanza.attrs.from] == null) {
 							if (chats[chat_id] == null) {

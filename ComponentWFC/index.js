@@ -20,8 +20,9 @@ var config = require(configPath);
 var db;
 
 function loadDb() {
-	db = {};
-	console.log("[MongoDb]:Connecting...");
+
+	global.db = {};
+	console.log("[MongoDb]:Connecting");
 
 	var mongoConnectionAttrs = { useNewUrlParser: true, useUnifiedTopology: true };
 
@@ -30,11 +31,58 @@ function loadDb() {
 	}
 
 	mongoClient.connect(config.mongodb, mongoConnectionAttrs, function (err, dbClient) {
+
 		if (dbClient != null) {
-			//console.log("[MongoDb]:Connected");
-			db.warface = {};
-			db.warface.profiles = dbClient.db("warface").collection("profiles");
-			loadXmppConnection();
+
+			global.db.warface = {};
+			global.db.warface.profiles = dbClient.db("warface").collection("profiles_" + global.startupParams.locale + "_" + global.startupParams.ver);
+			global.db.warface.cache = dbClient.db("warface").collection("cache_" + global.startupParams.locale + "_" + global.startupParams.ver);
+			global.db.warface.clans = dbClient.db("warface").collection("clans_" + global.startupParams.locale + "_" + global.startupParams.ver);
+			global.db.warface.hwban = dbClient.db("warface").collection("hwban");
+
+			console.log("[MongoDb]:Initializing 'profiles'");
+
+			global.db.warface.profiles.createIndexes([{ key: { _id: 1 }, name: "_id_" }, { key: { username: 1 }, name: "_username_", unique: true }, { key: { nick: 1 }, name: "_nick_", unique: true }, { key: { clan_name: 1 }, name: "_clan_name_" }], function (errCreateProfilesIndexes) {
+
+				if (errCreateProfilesIndexes) {
+					console.log(errCreateProfilesIndexes);
+					throw "";
+				}
+
+				console.log("[MongoDb]:Initializing 'clans'");
+
+				global.db.warface.clans.createIndexes([{ key: { _id: 1 }, name: "_id_" }, { key: { name: 1 }, name: "_name_", unique: true }], function (errCreateClansIndexes) {
+
+					if (errCreateClansIndexes) {
+						console.log(errCreateClansIndexes);
+						throw "";
+					}
+
+					console.log("[MongoDb]:Initializing 'cache'");
+
+					global.db.warface.cache.createIndexes([{ key: { _id: 1 }, name: "_id_" }], function (errCreateCacheIndexes) {
+
+						if (errCreateCacheIndexes) {
+							console.log(errCreateCacheIndexes);
+							throw "";
+						}
+
+						console.log("[MongoDb]:Initializing 'hwban'");
+
+						global.db.warface.hwban.createIndexes([{ key: { _id: 1 }, name: "_id_" }], function (errCreateHwbanIndexes) {
+
+							if (errCreateHwbanIndexes) {
+								console.log(errCreateHwbanIndexes);
+								throw "";
+							}
+
+							loadXmppConnection();
+						});
+
+					});
+
+				});
+			});
 		} else {
 			console.log("[MongoDb]:Connect error -> " + err.message);
 			setTimeout(function () {
